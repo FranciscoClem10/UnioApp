@@ -1,11 +1,9 @@
 <?php
-// Asegurar sesión
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (!isset($_SESSION['usuario_id'])) {
     header('Location: ' . BASE_URL . '?c=login');
     exit;
 }
-// $tipos debe venir del controlador (ya está definida)
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -23,7 +21,6 @@ if (!isset($_SESSION['usuario_id'])) {
         button { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
         button:hover { background: #218838; }
         .error { color: red; margin-bottom: 15px; padding: 10px; background: #ffe6e6; border-radius: 5px; }
-        .exito { color: green; background: #e6ffe6; padding: 10px; border-radius: 5px; margin-bottom: 15px; }
         #map { height: 300px; margin-top: 5px; border-radius: 8px; border: 1px solid #ccc; }
         .coord-info { margin-top: 8px; font-size: 0.9em; color: #555; }
         .btn-geo { background: #007bff; margin-top: 5px; }
@@ -47,7 +44,7 @@ if (!isset($_SESSION['usuario_id'])) {
             <input type="text" name="nombre" required maxlength="100">
         </div>
 
-        <!-- Tipo de actividad -->
+        <!-- Tipo -->
         <div class="campo">
             <label class="requerido">Tipo de actividad</label>
             <select name="id_tipo" required>
@@ -61,13 +58,13 @@ if (!isset($_SESSION['usuario_id'])) {
         <!-- Descripción -->
         <div class="campo">
             <label>Descripción</label>
-            <textarea name="descripcion" rows="4" maxlength="65535"></textarea>
+            <textarea name="descripcion" rows="4"></textarea>
         </div>
 
         <!-- Requisitos -->
         <div class="campo">
             <label>Requisitos</label>
-            <textarea name="requisitos" rows="3" maxlength="65535"></textarea>
+            <textarea name="requisitos" rows="3"></textarea>
         </div>
 
         <!-- Edades -->
@@ -82,7 +79,7 @@ if (!isset($_SESSION['usuario_id'])) {
             </div>
         </div>
 
-        <!-- Límite de participantes -->
+        <!-- Límite participantes -->
         <div style="display: flex; gap: 15px;">
             <div class="campo" style="flex:1">
                 <label>Mínimo participantes</label>
@@ -104,7 +101,19 @@ if (!isset($_SESSION['usuario_id'])) {
             </select>
         </div>
 
-        <!-- Mapa para ubicación -->
+        <!-- Fechas (nuevo) -->
+        <div style="display: flex; gap: 15px;">
+            <div class="campo" style="flex:1">
+                <label class="requerido">Fecha y hora de inicio</label>
+                <input type="datetime-local" name="fecha_inicio" required>
+            </div>
+            <div class="campo" style="flex:1">
+                <label class="requerido">Fecha y hora de fin</label>
+                <input type="datetime-local" name="fecha_fin" required>
+            </div>
+        </div>
+
+        <!-- Mapa ubicación -->
         <div class="campo">
             <label class="requerido">Ubicación de la actividad</label>
             <div id="map"></div>
@@ -117,7 +126,7 @@ if (!isset($_SESSION['usuario_id'])) {
             </div>
         </div>
 
-        <!-- Foto de actividad -->
+        <!-- Foto -->
         <div class="campo">
             <label>Foto de la actividad (JPG, PNG, WEBP, máx. 5MB)</label>
             <input type="file" name="foto_actividad" accept="image/jpeg,image/png,image/webp">
@@ -129,67 +138,36 @@ if (!isset($_SESSION['usuario_id'])) {
 </div>
 
 <script>
-    // Coordenadas por defecto: Tierra Blanca, Veracruz
     const defLat = 18.4500;
     const defLng = -96.3500;
-    
-    // Inicializar mapa
     var map = L.map('map').setView([defLat, defLng], 13);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CartoDB'
     }).addTo(map);
-
-    // Marcador arrastrable
     var marker = L.marker([defLat, defLng], { draggable: true }).addTo(map);
-    
-    // Actualizar campos ocultos y spans
     function actualizarCoordenadas(lat, lng) {
         document.getElementById('latSpan').innerText = lat.toFixed(6);
         document.getElementById('lngSpan').innerText = lng.toFixed(6);
         document.getElementById('latInput').value = lat;
         document.getElementById('lngInput').value = lng;
     }
-    
-    // Evento al arrastrar marcador
     marker.on('dragend', function(e) {
         var pos = marker.getLatLng();
         actualizarCoordenadas(pos.lat, pos.lng);
     });
-    
-    // Evento al hacer clic en el mapa
     map.on('click', function(e) {
         marker.setLatLng(e.latlng);
         actualizarCoordenadas(e.latlng.lat, e.latlng.lng);
     });
-    
-    // Botón para usar ubicación actual del navegador
     document.getElementById('btnMiUbicacion').addEventListener('click', function() {
-        if (!navigator.geolocation) {
-            alert("Tu navegador no soporta geolocalización.");
-            return;
-        }
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                var lat = position.coords.latitude;
-                var lng = position.coords.longitude;
-                map.setView([lat, lng], 15);
-                marker.setLatLng([lat, lng]);
-                actualizarCoordenadas(lat, lng);
-            },
-            function(error) {
-                let msg = "Error obteniendo ubicación: ";
-                switch(error.code) {
-                    case error.PERMISSION_DENIED: msg += "Permiso denegado."; break;
-                    case error.POSITION_UNAVAILABLE: msg += "Ubicación no disponible."; break;
-                    case error.TIMEOUT: msg += "Tiempo agotado."; break;
-                    default: msg += "Desconocido.";
-                }
-                alert(msg);
-            }
-        );
+        if (!navigator.geolocation) alert("Geolocalización no soportada");
+        else navigator.geolocation.getCurrentPosition(function(pos) {
+            var lat = pos.coords.latitude, lng = pos.coords.longitude;
+            map.setView([lat, lng], 15);
+            marker.setLatLng([lat, lng]);
+            actualizarCoordenadas(lat, lng);
+        }, function(err) { alert("Error obteniendo ubicación"); });
     });
-    
-    // Inicializar coordenadas
     actualizarCoordenadas(defLat, defLng);
 </script>
 </body>
