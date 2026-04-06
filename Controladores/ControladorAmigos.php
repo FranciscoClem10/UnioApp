@@ -11,7 +11,7 @@ class ControladorAmigos {
         $termino = '';
         if (isset($_GET['buscar']) && strlen(trim($_GET['buscar'])) > 2) {
             $termino = trim($_GET['buscar']);
-            $resultados = $modelo->buscarNuevosAmigos($_SESSION['usuario_id'], $termino);
+            $resultados = $modelo->buscarUsuariosConRelacion($_SESSION['usuario_id'], $termino);
         }
         require_once 'Vistas/Amigos/nuevosAmigos.php';
     }
@@ -57,6 +57,32 @@ class ControladorAmigos {
         }
         header('Location: ' . BASE_URL . '?c=perfil');
         exit;
+    }
+
+    public function verPerfil() {
+        if (!isset($_SESSION['usuario_id'])) {
+            header('Location: ' . BASE_URL . '?c=login');
+            exit;
+        }
+        $id = (int)($_GET['id'] ?? 0);
+        if ($id <= 0) {
+            header('Location: ' . BASE_URL . '?c=dashboard');
+            exit;
+        }
+        $modelo = new ModeloUsuario();
+        $usuario = $modelo->obtenerPorId($id);
+        if (!$usuario) {
+            die("Usuario no encontrado");
+        }
+        // Convertir foto
+        if (!empty($usuario['foto_perfil'])) {
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_buffer($finfo, $usuario['foto_perfil']);
+            finfo_close($finfo);
+            $usuario['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($usuario['foto_perfil']);
+        }
+        // También podemos mostrar amigos comunes, etc.
+        require_once 'Vistas/Amigos/verPerfil.php';
     }
 }
 ?>

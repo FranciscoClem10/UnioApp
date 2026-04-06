@@ -123,28 +123,46 @@ public function obtenerAmigos($id_usuario) {
     return $amigos;
 }
 
-// Buscar usuarios por nombre/apellido (excluyendo a uno mismo y a los ya amigos)
-public function buscarNuevosAmigos($id_usuario, $termino) {
-    // Obtener IDs de amigos actuales (incluyendo pendientes para no mostrarlos)
-    $sqlAmigos = "SELECT id_solicitante as id FROM amistades WHERE id_receptor = :id
-                  UNION SELECT id_receptor FROM amistades WHERE id_solicitante = :id";
-    $stmtAm = $this->db->prepare($sqlAmigos);
-    $stmtAm->execute([':id' => $id_usuario]);
-    $idsExcluir = $stmtAm->fetchAll(PDO::FETCH_COLUMN);
-    $idsExcluir[] = $id_usuario;
-    $placeholders = implode(',', array_fill(0, count($idsExcluir), '?'));
-    
-    $sql = "SELECT id_usuario, nombre, apellidos, email, foto_perfil, latitud, longitud
-            FROM usuarios 
-            WHERE activo = 1 
-              AND id_usuario NOT IN ($placeholders)
-              AND (nombre LIKE ? OR apellidos LIKE ? OR CONCAT(nombre, ' ', apellidos) LIKE ?)
-            LIMIT 20";
-    $parametros = array_merge($idsExcluir, ["%$termino%", "%$termino%", "%$termino%"]);
+// Buscar usuarios por nombre, apellidos o email, incluyendo amigos y no amigos
+public function buscarUsuariosConRelacion($id_usuario, $termino) {
+    $sql = "SELECT u.id_usuario, u.nombre, u.apellidos, u.email, u.foto_perfil, u.latitud, u.longitud
+            FROM usuarios u
+            WHERE u.activo = 1 
+              AND u.id_usuario != :id_actual
+              AND (u.nombre LIKE :termino OR u.apellidos LIKE :termino OR u.email LIKE :termino OR CONCAT(u.nombre, ' ', u.apellidos) LIKE :termino)
+            LIMIT 30";
     $stmt = $this->db->prepare($sql);
-    $stmt->execute($parametros);
+    $terminoParam = "%$termino%";
+    $stmt->execute([':id_actual' => $id_usuario, ':termino' => $terminoParam]);
     $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Para cada usuario, determinar el estado de amistad
+    $amistades = [];
+    $sqlAmistad = "SELECT id_solicitante, id_receptor, estado FROM amistades 
+                   WHERE (id_solicitante = :id1 AND id_receptor = :id2)
+                      OR (id_solicitante = :id2 AND id_receptor = :id1)";
+    $stmtAm = $this->db->prepare($sqlAmistad);
     foreach ($usuarios as &$u) {
+        $stmtAm->execute([':id1' => $id_usuario, ':id2' => $u['id_usuario']]);
+        $rel = $stmtAm->fetch(PDO::FETCH_ASSOC);
+        if ($rel) {
+            if ($rel['estado'] == 'aceptado') {
+                $u['relacion'] = 'amigo';
+            } elseif ($rel['estado'] == 'pendiente') {
+                // determinar quién envió
+                if ($rel['id_solicitante'] == $id_usuario) {
+                    $u['relacion'] = 'solicitud_enviada';
+                } else {
+                    $u['relacion'] = 'solicitud_recibida';
+                }
+            } else {
+                $u['relacion'] = 'ninguna';
+            }
+        } else {
+            $u['relacion'] = 'ninguna';
+        }
+        
+        // Convertir foto a base64
         if (!empty($u['foto_perfil'])) {
             $finfo = finfo_open(FILEINFO_MIME_TYPE);
             $mime = finfo_buffer($finfo, $u['foto_perfil']);
