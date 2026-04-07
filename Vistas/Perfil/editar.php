@@ -22,6 +22,8 @@ if (!isset($_SESSION['usuario_id'])) {
         .btn-geo { background: #007bff; margin-top: 5px; }
         .error { color: red; margin-bottom: 15px; }
         #map { height: 250px; margin-top: 5px; border-radius: 8px; border: 1px solid #ccc; }
+        .row { display: flex; gap: 15px; }
+        .row .campo { flex: 1; }
     </style>
 </head>
 <body>
@@ -36,10 +38,18 @@ if (!isset($_SESSION['usuario_id'])) {
             <label>Nombre *</label>
             <input type="text" name="nombre" value="<?= htmlspecialchars($usuario['nombre']) ?>" required>
         </div>
-        <div class="campo">
-            <label>Apellidos *</label>
-            <input type="text" name="apellidos" value="<?= htmlspecialchars($usuario['apellidos']) ?>" required>
+
+        <div class="row">
+            <div class="campo">
+                <label>Apellido paterno *</label>
+                <input type="text" name="apellido_paterno" value="<?= htmlspecialchars($usuario['apellido_paterno'] ?? '') ?>" required>
+            </div>
+            <div class="campo">
+                <label>Apellido materno</label>
+                <input type="text" name="apellido_materno" value="<?= htmlspecialchars($usuario['apellido_materno'] ?? '') ?>">
+            </div>
         </div>
+
         <div class="campo">
             <label>Teléfono</label>
             <input type="tel" name="telefono" value="<?= htmlspecialchars($usuario['telefono'] ?? '') ?>">

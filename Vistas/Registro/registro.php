@@ -22,6 +22,8 @@
         .boton-geo { margin-top: 10px; background-color: #007bff; }
         .boton-geo:hover { background-color: #0056b3; }
         .coord-info { font-size: 0.9em; color: #555; margin-top: 8px; }
+        .row { display: flex; gap: 15px; }
+        .row .campo { flex: 1; }
     </style>
 </head>
 <body>
@@ -38,10 +40,18 @@
                 <label for="nombre">Nombre *</label>
                 <input type="text" name="nombre" id="nombre" required>
             </div>
-            <div class="campo">
-                <label for="apellidos">Apellidos *</label>
-                <input type="text" name="apellidos" id="apellidos" required>
+            
+            <div class="row">
+                <div class="campo">
+                    <label for="apellido_paterno">Apellido paterno *</label>
+                    <input type="text" name="apellido_paterno" id="apellido_paterno" required>
+                </div>
+                <div class="campo">
+                    <label for="apellido_materno">Apellido materno</label>
+                    <input type="text" name="apellido_materno" id="apellido_materno">
+                </div>
             </div>
+
             <div class="campo">
                 <label for="email">Correo electrónico *</label>
                 <input type="email" name="email" id="email" required>

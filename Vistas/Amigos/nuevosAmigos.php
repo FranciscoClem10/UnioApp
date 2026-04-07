@@ -40,35 +40,35 @@ if (!isset($_SESSION['usuario_id'])) {
     <?php endif; ?>
 
     <?php if ($termino !== '' && empty($resultados)): ?>
-    <p>No se encontraron usuarios con "<?= htmlspecialchars($termino) ?>".</p>
-<?php elseif (!empty($resultados)): ?>
-    <h3>Resultados para "<?= htmlspecialchars($termino) ?>"</h3>
-    <?php foreach ($resultados as $u): ?>
-        <div class="usuario-item">
-            <?php if ($u['foto_base64']): ?>
-                <img src="<?= $u['foto_base64'] ?>" class="avatar">
-            <?php else: ?>
-                <div class="avatar" style="display: flex; align-items: center; justify-content: center;">?</div>
-            <?php endif; ?>
-            <div style="flex:1;">
-                <strong><?= htmlspecialchars($u['nombre'] . ' ' . $u['apellidos']) ?></strong><br>
-                <small><?= htmlspecialchars($u['email']) ?></small><br>
-                <?php if ($u['relacion'] == 'amigo'): ?>
-                    <span style="color: green;">✓ Ya son amigos</span>
-                <?php elseif ($u['relacion'] == 'solicitud_enviada'): ?>
-                    <span style="color: orange;">⏳ Solicitud enviada (pendiente)</span>
-                <?php elseif ($u['relacion'] == 'solicitud_recibida'): ?>
-                    <span style="color: blue;">📩 Solicitud pendiente de respuesta</span>
+        <p>No se encontraron usuarios con "<?= htmlspecialchars($termino) ?>".</p>
+    <?php elseif (!empty($resultados)): ?>
+        <h3>Resultados para "<?= htmlspecialchars($termino) ?>"</h3>
+        <?php foreach ($resultados as $u): ?>
+            <div class="usuario-item">
+                <?php if ($u['foto_base64']): ?>
+                    <img src="<?= $u['foto_base64'] ?>" class="avatar">
+                <?php else: ?>
+                    <div class="avatar" style="display: flex; align-items: center; justify-content: center;">?</div>
                 <?php endif; ?>
+                <div style="flex:1;">
+                    <strong><?= htmlspecialchars($u['nombre'] . ' ' . $u['apellidos']) ?></strong><br>
+                    <small><?= htmlspecialchars($u['email']) ?></small><br>
+                    <?php if ($u['relacion'] == 'amigo'): ?>
+                        <span style="color: green;">✓ Ya son amigos</span>
+                    <?php elseif ($u['relacion'] == 'solicitud_enviada'): ?>
+                        <span style="color: orange;">⏳ Solicitud enviada (pendiente)</span>
+                    <?php elseif ($u['relacion'] == 'solicitud_recibida'): ?>
+                        <span style="color: blue;">📩 Solicitud pendiente de respuesta</span>
+                    <?php endif; ?>
+                </div>
+                <div>
+                    <a href="<?= BASE_URL ?>?c=amigos&a=verPerfil&id=<?= $u['id_usuario'] ?>" class="btn">Ver perfil</a>
+                    <?php if ($u['relacion'] == 'ninguna'): ?>
+                        <a href="<?= BASE_URL ?>?c=amigos&a=enviarSolicitud&id=<?= $u['id_usuario'] ?>" class="btn">Enviar solicitud</a>
+                    <?php endif; ?>
+                </div>
             </div>
-            <div>
-                <a href="<?= BASE_URL ?>?c=amigos&a=verPerfil&id=<?= $u['id_usuario'] ?>" class="btn">Ver perfil</a>
-                <?php if ($u['relacion'] == 'ninguna'): ?>
-                    <a href="<?= BASE_URL ?>?c=amigos&a=enviarSolicitud&id=<?= $u['id_usuario'] ?>" class="btn">Enviar solicitud</a>
-                <?php endif; ?>
-            </div>
-        </div>
-    <?php endforeach; ?>
+        <?php endforeach; ?>
 <?php endif; ?>
     <p><a href="<?= BASE_URL ?>?c=perfil">← Volver a mi perfil</a></p>
 </div>

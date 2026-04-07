@@ -19,15 +19,16 @@ class ControladorRegistro {
 
         // 1. Validación básica de campos obligatorios
         $nombre = trim($_POST['nombre'] ?? '');
-        $apellidos = trim($_POST['apellidos'] ?? '');
+        $apellido_paterno = trim($_POST['apellido_paterno'] ?? '');
+        $apellido_materno = trim($_POST['apellido_materno'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
         $confirm_password = $_POST['confirm_password'] ?? '';
         $fecha_nacimiento = $_POST['fecha_nacimiento'] ?? '';
 
-        // Validar que los campos requeridos no estén vacíos
-        if (empty($nombre) || empty($apellidos) || empty($email) || empty($password) || empty($fecha_nacimiento)) {
-            $_SESSION['error_registro'] = "Por favor, complete todos los campos obligatorios.";
+        // Validar que los campos requeridos no estén vacíos (apellido paterno es obligatorio, materno opcional)
+        if (empty($nombre) || empty($apellido_paterno) || empty($email) || empty($password) || empty($fecha_nacimiento)) {
+            $_SESSION['error_registro'] = "Por favor, complete todos los campos obligatorios (nombre, apellido paterno, email, contraseña y fecha de nacimiento).";
             header('Location: ' . BASE_URL . '?c=registro');
             exit;
         }
@@ -63,17 +64,17 @@ class ControladorRegistro {
                 header('Location: ' . BASE_URL . '?c=registro');
                 exit;
             }
-            // Validar tipo de imagen (ej: solo JPEG, PNG)
+            // Validar tipo de imagen (JPEG, PNG, WEBP)
             $tipo_imagen = mime_content_type($_FILES['foto_perfil']['tmp_name']);
-            if (!in_array($tipo_imagen, ['image/jpeg', 'image/png'])) {
-                $_SESSION['error_registro'] = "Formato de imagen no válido. Solo se permiten JPG y PNG.";
+            if (!in_array($tipo_imagen, ['image/jpeg', 'image/png', 'image/webp'])) {
+                $_SESSION['error_registro'] = "Formato de imagen no válido. Solo se permiten JPG, PNG y WEBP.";
                 header('Location: ' . BASE_URL . '?c=registro');
                 exit;
             }
             // Leer el contenido del archivo como binario
             $foto_blob = file_get_contents($_FILES['foto_perfil']['tmp_name']);
         } elseif (isset($_FILES['foto_perfil']) && $_FILES['foto_perfil']['error'] !== UPLOAD_ERR_NO_FILE) {
-            // Manejar otros errores de subida (archivo muy grande, error parcial, etc.)
+            // Manejar otros errores de subida
             $error_codigo = $_FILES['foto_perfil']['error'];
             $_SESSION['error_registro'] = "Error al subir la foto. Código: " . $error_codigo;
             header('Location: ' . BASE_URL . '?c=registro');
@@ -84,12 +85,13 @@ class ControladorRegistro {
         $latitud = !empty($_POST['latitud']) ? (float)$_POST['latitud'] : null;
         $longitud = !empty($_POST['longitud']) ? (float)$_POST['longitud'] : null;
 
-        // 5. Preparar datos para el modelo
+        // 5. Preparar datos para el modelo (usando apellido_paterno y apellido_materno)
         $datos_usuario = [
             'nombre' => $nombre,
-            'apellidos' => $apellidos,
+            'apellido_paterno' => $apellido_paterno,
+            'apellido_materno' => $apellido_materno,
             'email' => $email,
-            'password_hash' => password_hash($password, PASSWORD_DEFAULT), // Siempre hashear
+            'password_hash' => password_hash($password, PASSWORD_DEFAULT),
             'telefono' => trim($_POST['telefono'] ?? ''),
             'fecha_nacimiento' => $fecha_nacimiento,
             'genero' => $_POST['genero'] ?? 'Prefiero no decir',
@@ -108,7 +110,7 @@ class ControladorRegistro {
             $_SESSION['usuario_nombre'] = $nombre;
             $_SESSION['usuario_email'] = $email;
             
-            // Redirigir al dashboard o a una página de bienvenida
+            // Redirigir al dashboard
             header('Location: ' . BASE_URL . '?c=dashboard');
             exit;
         } else {

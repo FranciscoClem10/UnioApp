@@ -12,6 +12,10 @@ class ControladorAmigos {
         if (isset($_GET['buscar']) && strlen(trim($_GET['buscar'])) > 2) {
             $termino = trim($_GET['buscar']);
             $resultados = $modelo->buscarUsuariosConRelacion($_SESSION['usuario_id'], $termino);
+            // Añadir campo 'apellidos' para compatibilidad con vistas antiguas
+            foreach ($resultados as &$usuario) {
+                $usuario['apellidos'] = trim($usuario['apellido_paterno'] . ' ' . $usuario['apellido_materno']);
+            }
         }
         require_once 'Vistas/Amigos/nuevosAmigos.php';
     }
@@ -74,6 +78,8 @@ class ControladorAmigos {
         if (!$usuario) {
             die("Usuario no encontrado");
         }
+        // Añadir campo 'apellidos' para compatibilidad
+        $usuario['apellidos'] = trim($usuario['apellido_paterno'] . ' ' . $usuario['apellido_materno']);
         // Convertir foto
         if (!empty($usuario['foto_perfil'])) {
             $finfo = finfo_open(FILEINFO_MIME_TYPE);

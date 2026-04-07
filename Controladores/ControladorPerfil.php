@@ -12,6 +12,8 @@ class ControladorPerfil {
             header('Location: ' . BASE_URL . '?c=login');
             exit;
         }
+        // Añadir campo 'apellidos' para compatibilidad con vistas
+        $usuario['apellidos'] = trim($usuario['apellido_paterno'] . ' ' . $usuario['apellido_materno']);
         // Convertir foto a base64 si existe
         if (!empty($usuario['foto_perfil'])) {
             $finfo = finfo_open(FILEINFO_MIME_TYPE);
@@ -22,7 +24,14 @@ class ControladorPerfil {
             $usuario['foto_base64'] = null;
         }
         $amigos = $modelo->obtenerAmigos($_SESSION['usuario_id']);
+        // Añadir 'apellidos' a cada amigo para compatibilidad
+        foreach ($amigos as &$amigo) {
+            $amigo['apellidos'] = trim($amigo['apellido_paterno'] . ' ' . $amigo['apellido_materno']);
+        }
         $solicitudes = $modelo->obtenerSolicitudesPendientes($_SESSION['usuario_id']);
+        foreach ($solicitudes as &$sol) {
+            $sol['apellidos'] = trim($sol['apellido_paterno'] . ' ' . $sol['apellido_materno']);
+        }
         require_once 'Vistas/Perfil/index.php';
     }
 
@@ -37,6 +46,7 @@ class ControladorPerfil {
             header('Location: ' . BASE_URL . '?c=perfil');
             exit;
         }
+        $usuario['apellidos'] = trim($usuario['apellido_paterno'] . ' ' . $usuario['apellido_materno']);
         if (!empty($usuario['foto_perfil'])) {
             $finfo = finfo_open(FILEINFO_MIME_TYPE);
             $mime = finfo_buffer($finfo, $usuario['foto_perfil']);
@@ -58,7 +68,8 @@ class ControladorPerfil {
             exit;
         }
         $nombre = trim($_POST['nombre'] ?? '');
-        $apellidos = trim($_POST['apellidos'] ?? '');
+        $apellido_paterno = trim($_POST['apellido_paterno'] ?? '');
+        $apellido_materno = trim($_POST['apellido_materno'] ?? '');
         $telefono = trim($_POST['telefono'] ?? '');
         $fecha_nacimiento = $_POST['fecha_nacimiento'] ?? '';
         $genero = $_POST['genero'] ?? 'Prefiero no decir';
@@ -66,8 +77,8 @@ class ControladorPerfil {
         $latitud = isset($_POST['latitud']) && $_POST['latitud'] !== '' ? (float)$_POST['latitud'] : null;
         $longitud = isset($_POST['longitud']) && $_POST['longitud'] !== '' ? (float)$_POST['longitud'] : null;
 
-        if (empty($nombre) || empty($apellidos) || empty($fecha_nacimiento)) {
-            $_SESSION['error_perfil'] = "Nombre, apellidos y fecha de nacimiento son obligatorios.";
+        if (empty($nombre) || empty($apellido_paterno) || empty($fecha_nacimiento)) {
+            $_SESSION['error_perfil'] = "Nombre, apellido paterno y fecha de nacimiento son obligatorios.";
             header('Location: ' . BASE_URL . '?c=perfil&a=editar');
             exit;
         }
@@ -91,7 +102,8 @@ class ControladorPerfil {
 
         $datos = [
             'nombre' => $nombre,
-            'apellidos' => $apellidos,
+            'apellido_paterno' => $apellido_paterno,
+            'apellido_materno' => $apellido_materno,
             'telefono' => $telefono,
             'fecha_nacimiento' => $fecha_nacimiento,
             'genero' => $genero,
@@ -120,10 +132,16 @@ class ControladorPerfil {
         }
         $modelo = new ModeloUsuario();
         $solicitudes = $modelo->obtenerSolicitudesPendientes($_SESSION['usuario_id']);
+        foreach ($solicitudes as &$sol) {
+            $sol['apellidos'] = trim($sol['apellido_paterno'] . ' ' . $sol['apellido_materno']);
+        }
         $resultados = [];
         if (isset($_GET['buscar']) && !empty($_GET['buscar'])) {
             $termino = trim($_GET['buscar']);
-            $resultados = $modelo->buscarUsuarios($termino, $_SESSION['usuario_id']);
+            $resultados = $modelo->buscarUsuariosConRelacion($_SESSION['usuario_id'], $termino);
+            foreach ($resultados as &$usr) {
+                $usr['apellidos'] = trim($usr['apellido_paterno'] . ' ' . $usr['apellido_materno']);
+            }
         }
         require_once 'Vistas/Perfil/nuevosAmigos.php';
     }
@@ -145,15 +163,11 @@ class ControladorPerfil {
             exit;
         }
         $modelo = new ModeloUsuario();
-        $resultado = $modelo->enviarSolicitud($_SESSION['usuario_id'], $id_receptor);
+        $resultado = $modelo->enviarSolicitudAmistad($_SESSION['usuario_id'], $id_receptor);
         if ($resultado === true) {
             $_SESSION['mensaje_amigos'] = "Solicitud enviada.";
-        } elseif ($resultado === 'ya_son_amigos') {
-            $_SESSION['error_amigos'] = "Ya son amigos.";
-        } elseif ($resultado === 'solicitud_pendiente') {
-            $_SESSION['error_amigos'] = "Ya existe una solicitud pendiente.";
         } else {
-            $_SESSION['error_amigos'] = "Error al enviar solicitud.";
+            $_SESSION['error_amigos'] = "No se pudo enviar la solicitud (quizás ya existe).";
         }
         header('Location: ' . BASE_URL . '?c=perfil&a=nuevosAmigos');
         exit;

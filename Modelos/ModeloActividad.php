@@ -150,8 +150,9 @@ class ModeloActividad {
      * Obtiene todos los datos para la vista de detalle (usando fecha_inicio/fin)
      */
     public function obtenerDetalleCompleto($id_actividad) {
+        // Se usa CONCAT_WS para omitir espacios si algún apellido está vacío o nulo
         $sql = "SELECT a.*, ta.nombre_tipo AS categoria, 
-                       CONCAT(u.nombre, ' ', u.apellidos) AS organizador_nombre,
+                       CONCAT_WS(' ', u.nombre, u.apellido_paterno, u.apellido_materno) AS organizador_nombre,
                        u.id_usuario AS organizador_id,
                        a.fecha_creacion AS fecha_publicacion
                 FROM actividades a
@@ -213,9 +214,11 @@ class ModeloActividad {
         return $actividad;
     }
 
-    // Reseñas (sin cambios)
+    // Reseñas (con ajuste de nombre de usuario)
     public function obtenerResenas($id_actividad) {
-        $sql = "SELECT r.*, CONCAT(u.nombre, ' ', u.apellidos) AS usuario_nombre, u.foto_perfil
+        $sql = "SELECT r.*, 
+                       CONCAT_WS(' ', u.nombre, u.apellido_paterno, u.apellido_materno) AS usuario_nombre, 
+                       u.foto_perfil
                 FROM resenas r
                 INNER JOIN usuarios u ON r.id_usuario = u.id_usuario
                 WHERE r.id_actividad = :id
