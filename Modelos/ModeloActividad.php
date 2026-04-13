@@ -6,35 +6,50 @@ class ModeloActividad {
         $this->db = Database::getConexion();
     }
 
-    // Obtener actividades visibles para el dashboard (usa fecha_inicio directamente)
     public function obtenerTodasVisibles($usuario_id) {
         $sql = "SELECT a.id_actividad, a.nombre AS titulo, a.descripcion, a.requisitos, 
-                       a.edad_minima, a.limite_participantes_max AS limite_personas,
-                       a.latitud, a.longitud, a.privacidad AS tipo_acceso, a.estado,
-                       a.id_creador, ta.nombre_tipo AS categoria,
-                       a.fecha_inicio AS fecha_proxima,
-                       DATE_FORMAT(a.fecha_inicio, '%H:%i:%s') AS hora_proxima
+                    a.edad_minima, a.limite_participantes_max AS limite_personas,
+                    a.latitud, a.longitud, a.privacidad AS tipo_acceso, a.estado,
+                    a.id_creador, ta.nombre_tipo AS categoria,
+                    a.fecha_inicio AS fecha_proxima,
+                    DATE_FORMAT(a.fecha_inicio, '%H:%i:%s') AS hora_proxima
                 FROM actividades a
                 INNER JOIN tipos_actividad ta ON a.id_tipo = ta.id_tipo
                 WHERE a.estado IN ('pendiente', 'en_curso')
-                  AND a.privacidad != 'privada'
+                AND a.privacidad != 'privada'
+                AND a.id_creador != :usuario_id
                 ORDER BY a.fecha_inicio ASC";
+
         $stmt = $this->db->prepare($sql);
+        $stmt->bindParam(':usuario_id', $usuario_id, PDO::PARAM_INT);
         $stmt->execute();
+
         $actividades = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
         foreach ($actividades as &$act) {
-            $act['fecha'] = $act['fecha_proxima'] ? date('Y-m-d', strtotime($act['fecha_proxima'])) : null;
+            $act['fecha'] = $act['fecha_proxima'] 
+                ? date('Y-m-d', strtotime($act['fecha_proxima'])) 
+                : null;
+
             $act['hora'] = $act['hora_proxima'] ?? null;
+
             switch ($act['tipo_acceso']) {
-                case 'publica': $act['tipo_acceso'] = 'todos'; break;
-                case 'privada': $act['tipo_acceso'] = 'invitacion'; break;
-                case 'por_aprobacion': $act['tipo_acceso'] = 'aprobado'; break;
-                default: $act['tipo_acceso'] = 'todos';
+                case 'publica': 
+                    $act['tipo_acceso'] = 'todos'; 
+                    break;
+                case 'privada': 
+                    $act['tipo_acceso'] = 'invitacion'; 
+                    break;
+                case 'por_aprobacion': 
+                    $act['tipo_acceso'] = 'aprobado'; 
+                    break;
+                default: 
+                    $act['tipo_acceso'] = 'todos';
             }
         }
+
         return $actividades;
     }
-
     // Actividades creadas por el usuario
     public function obtenerPorCreador($usuario_id) {
         $sql = "SELECT a.id_actividad, a.nombre AS titulo, a.descripcion, a.requisitos, 
@@ -258,5 +273,248 @@ class ModeloActividad {
             ':com' => $comentario
         ]);
     }
+
+    // Obtener organizadores de una actividad (rol = 'organizador')
+    public function obtenerOrganizadores($id_actividad) {
+        $sql = "SELECT u.id_usuario, u.nombre, u.apellido_paterno, u.apellido_materno, u.email, u.foto_perfil
+                FROM participantes p
+                INNER JOIN usuarios u ON p.id_usuario = u.id_usuario
+                WHERE p.id_actividad = :id AND p.rol = 'organizador' AND p.estado = 'aceptado'";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $id_actividad]);
+        $orgs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($orgs as &$o) {
+            $o['nombre_completo'] = trim($o['nombre'] . ' ' . $o['apellido_paterno'] . ' ' . $o['apellido_materno']);
+            if (!empty($o['foto_perfil'])) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_buffer($finfo, $o['foto_perfil']);
+                finfo_close($finfo);
+                $o['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($o['foto_perfil']);
+            }
+        }
+        return $orgs;
+    }
+
+    // Obtener solicitudes pendientes (estado = 'pendiente')
+    public function obtenerSolicitudesPendientes($id_actividad) {
+        $sql = "SELECT u.id_usuario, u.nombre, u.apellido_paterno, u.apellido_materno, u.foto_perfil, p.fecha_solicitud
+                FROM participantes p
+                INNER JOIN usuarios u ON p.id_usuario = u.id_usuario
+                WHERE p.id_actividad = :id AND p.estado = 'pendiente' AND p.rol = 'miembro'
+                ORDER BY p.fecha_solicitud ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $id_actividad]);
+        $solicitudes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($solicitudes as &$s) {
+            $s['nombre_completo'] = trim($s['nombre'] . ' ' . $s['apellido_paterno'] . ' ' . $s['apellido_materno']);
+            if (!empty($s['foto_perfil'])) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_buffer($finfo, $s['foto_perfil']);
+                finfo_close($finfo);
+                $s['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($s['foto_perfil']);
+            }
+        }
+        return $solicitudes;
+    }
+
+    // Obtener participantes aceptados (incluyendo creador y organizadores)
+    public function obtenerParticipantesAceptados($id_actividad) {
+        $sql = "SELECT u.id_usuario, u.nombre, u.apellido_paterno, u.apellido_materno, u.foto_perfil, p.rol
+                FROM participantes p
+                INNER JOIN usuarios u ON p.id_usuario = u.id_usuario
+                WHERE p.id_actividad = :id AND p.estado = 'aceptado'
+                ORDER BY FIELD(p.rol, 'creador', 'organizador', 'miembro')";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $id_actividad]);
+        $participantes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($participantes as &$p) {
+            $p['nombre_completo'] = trim($p['nombre'] . ' ' . $p['apellido_paterno'] . ' ' . $p['apellido_materno']);
+            if (!empty($p['foto_perfil'])) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_buffer($finfo, $p['foto_perfil']);
+                finfo_close($finfo);
+                $p['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($p['foto_perfil']);
+            }
+        }
+        return $participantes;
+    }
+
+    // Obtener invitaciones enviadas (para mostrar en edición)
+    public function obtenerInvitaciones($id_actividad) {
+        $sql = "SELECT i.*, 
+                    CASE WHEN i.id_invitado_usuario IS NOT NULL THEN u.nombre ELSE NULL END as invitado_nombre,
+                    CASE WHEN i.id_invitado_usuario IS NOT NULL THEN u.email ELSE i.email_invitado END as contacto
+                FROM invitaciones i
+                LEFT JOIN usuarios u ON i.id_invitado_usuario = u.id_usuario
+                WHERE i.id_actividad = :id
+                ORDER BY i.fecha_invitacion DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $id_actividad]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Contar participantes aceptados
+    public function contarParticipantesAceptados($id_actividad) {
+        $sql = "SELECT COUNT(*) FROM participantes WHERE id_actividad = :id AND estado = 'aceptado'";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $id_actividad]);
+        return (int)$stmt->fetchColumn();
+    }
+
+    // Actualizar datos de actividad (respetando restricciones desde controlador)
+    public function actualizarActividad($id, $datos, $foto_blob = null) {
+        try {
+            $sql = "UPDATE actividades SET 
+                    nombre = :nombre,
+                    id_tipo = :id_tipo,
+                    descripcion = :descripcion,
+                    requisitos = :requisitos,
+                    edad_minima = :edad_minima,
+                    edad_maxima = :edad_maxima,
+                    limite_participantes_min = :limite_min,
+                    limite_participantes_max = :limite_max,
+                    latitud = :latitud,
+                    longitud = :longitud,
+                    fecha_inicio = :fecha_inicio,
+                    fecha_fin = :fecha_fin,
+                    privacidad = :privacidad";
+            if ($foto_blob !== null) {
+                $sql .= ", foto_actividad = :foto";
+            }
+            $sql .= " WHERE id_actividad = :id";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindParam(':nombre', $datos['nombre']);
+            $stmt->bindParam(':id_tipo', $datos['id_tipo']);
+            $stmt->bindParam(':descripcion', $datos['descripcion']);
+            $stmt->bindParam(':requisitos', $datos['requisitos']);
+            $stmt->bindParam(':edad_minima', $datos['edad_minima']);
+            $stmt->bindParam(':edad_maxima', $datos['edad_maxima']);
+            $stmt->bindParam(':limite_min', $datos['limite_participantes_min']);
+            $stmt->bindParam(':limite_max', $datos['limite_participantes_max']);
+            $stmt->bindParam(':latitud', $datos['latitud']);
+            $stmt->bindParam(':longitud', $datos['longitud']);
+            $stmt->bindParam(':fecha_inicio', $datos['fecha_inicio']);
+            $stmt->bindParam(':fecha_fin', $datos['fecha_fin']);
+            $stmt->bindParam(':privacidad', $datos['privacidad']);
+            $stmt->bindParam(':id', $id);
+            if ($foto_blob !== null) {
+                $stmt->bindParam(':foto', $foto_blob, PDO::PARAM_LOB);
+            }
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("Error actualizar actividad: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Eliminar actividad (solo si finalizada o cancelada)
+    public function eliminarActividad($id) {
+        $sql = "DELETE FROM actividades WHERE id_actividad = :id AND estado IN ('finalizada', 'cancelada')";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([':id' => $id]);
+    }
+
+    // Agregar organizador (usuario debe ser participante aceptado o se le agrega automáticamente)
+    public function agregarOrganizador($id_actividad, $id_usuario) {
+        // Verificar si ya es participante
+        $sqlCheck = "SELECT 1 FROM participantes WHERE id_actividad = :id_act AND id_usuario = :id_user";
+        $stmt = $this->db->prepare($sqlCheck);
+        $stmt->execute([':id_act' => $id_actividad, ':id_user' => $id_usuario]);
+        if ($stmt->fetchColumn()) {
+            $sql = "UPDATE participantes SET rol = 'organizador', estado = 'aceptado' 
+                    WHERE id_actividad = :id_act AND id_usuario = :id_user";
+        } else {
+            $sql = "INSERT INTO participantes (id_actividad, id_usuario, rol, estado) 
+                    VALUES (:id_act, :id_user, 'organizador', 'aceptado')";
+        }
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([':id_act' => $id_actividad, ':id_user' => $id_usuario]);
+    }
+
+    // Quitar organizador (cambiar rol a 'miembro' si ya era participante, o eliminarlo si no)
+    public function quitarOrganizador($id_actividad, $id_usuario) {
+        $sql = "UPDATE participantes SET rol = 'miembro' 
+                WHERE id_actividad = :id_act AND id_usuario = :id_user AND rol = 'organizador'";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([':id_act' => $id_actividad, ':id_user' => $id_usuario]);
+    }
+
+    // Cambiar estado de un participante (pendiente -> aceptado/rechazado)
+    public function cambiarEstadoParticipante($id_actividad, $id_usuario, $nuevo_estado) {
+        $sql = "UPDATE participantes SET estado = :estado 
+                WHERE id_actividad = :id_act AND id_usuario = :id_user";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([':estado' => $nuevo_estado, ':id_act' => $id_actividad, ':id_user' => $id_usuario]);
+    }
+
+    // Expulsar participante (eliminar registro)
+    public function expulsarParticipante($id_actividad, $id_usuario) {
+        $sql = "DELETE FROM participantes WHERE id_actividad = :id_act AND id_usuario = :id_user AND rol != 'creador'";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([':id_act' => $id_actividad, ':id_user' => $id_usuario]);
+    }
+
+    // Verificar si un usuario es creador u organizador de la actividad
+    public function esOrganizadorOCreador($id_actividad, $id_usuario) {
+        $sql = "SELECT 1 FROM participantes 
+                WHERE id_actividad = :id_act AND id_usuario = :id_user 
+                AND (rol = 'creador' OR rol = 'organizador') AND estado = 'aceptado'";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id_act' => $id_actividad, ':id_user' => $id_usuario]);
+        return $stmt->fetchColumn() ? true : false;
+    }
+
+    // Invitar a usuario registrado
+    public function invitarUsuario($id_actividad, $id_invitador, $id_invitado) {
+        // Verificar que no sea ya participante
+        $sqlCheck = "SELECT 1 FROM participantes WHERE id_actividad = :id_act AND id_usuario = :id_user";
+        $stmt = $this->db->prepare($sqlCheck);
+        $stmt->execute([':id_act' => $id_actividad, ':id_user' => $id_invitado]);
+        if ($stmt->fetchColumn()) return false;
+        
+        // Insertar en participantes con estado 'invitado'
+        $sql = "INSERT INTO participantes (id_actividad, id_usuario, rol, estado) 
+                VALUES (:id_act, :id_user, 'miembro', 'invitado')";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id_act' => $id_actividad, ':id_user' => $id_invitado]);
+        // Guardar en invitaciones
+        $sqlInv = "INSERT INTO invitaciones (id_actividad, id_invitador, id_invitado_usuario, estado) 
+                VALUES (:id_act, :id_inv, :id_user, 'pendiente')";
+        $stmtInv = $this->db->prepare($sqlInv);
+        return $stmtInv->execute([':id_act' => $id_actividad, ':id_inv' => $id_invitador, ':id_user' => $id_invitado]);
+    }
+
+    // Invitar por correo electrónico (usuario no registrado)
+    public function invitarEmail($id_actividad, $id_invitador, $email) {
+        $sql = "INSERT INTO invitaciones (id_actividad, id_invitador, email_invitado, estado) 
+                VALUES (:id_act, :id_inv, :email, 'pendiente')";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([':id_act' => $id_actividad, ':id_inv' => $id_invitador, ':email' => $email]);
+    }
+
+    // Buscar amigos del creador/organizadores para invitarlos (opcional)
+    public function buscarAmigosParaInvitacion($id_usuario, $termino) {
+    $sql = "SELECT u.id_usuario, u.nombre, u.apellido_paterno, u.apellido_materno, u.email
+            FROM amistades a
+            INNER JOIN usuarios u ON (u.id_usuario = a.id_solicitante OR u.id_usuario = a.id_receptor)
+            WHERE (a.id_solicitante = :id_self OR a.id_receptor = :id_self)
+              AND a.estado = 'aceptado'
+              AND u.id_usuario != :id_self
+              AND (u.nombre LIKE :term OR u.apellido_paterno LIKE :term OR u.email LIKE :term)
+            LIMIT 10";
+    $stmt = $this->db->prepare($sql);
+    $term = "%$termino%";
+    $stmt->execute([':id_self' => $id_usuario, ':term' => $term]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+    // Contar miembros (participantes con rol 'miembro' y estado 'aceptado')
+    public function contarMiembros($id_actividad) {
+        $sql = "SELECT COUNT(*) FROM participantes WHERE id_actividad = :id AND rol = 'miembro' AND estado = 'aceptado'";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $id_actividad]);
+        return (int)$stmt->fetchColumn();
+    }
+
 }
 ?>

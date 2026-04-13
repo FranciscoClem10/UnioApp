@@ -33,7 +33,8 @@
         <div>
             <span>Bienvenido, <?= htmlspecialchars($_SESSION['usuario_nombre']) ?></span>
             <a href="<?= BASE_URL ?>?c=actividad&a=crear" class="btn btn-success">+ Crear actividad</a>
-            <a href="<?= BASE_URL ?>?c=mensajes&a=chats" class="btn btn-success">Mensajes y grupos</a>
+            <a href="<?= BASE_URL ?>?c=actividad&a=edicion" class="btn btn-success">Editar actividad</a>
+            <a href="<?= BASE_URL ?>?c=mensajes&a=chats" class="btn">Mensajes y grupos</a>
             <a href="<?= BASE_URL ?>?c=perfil&a=index" class="btn">Mi perfil</a>
             <a href="<?= BASE_URL ?>?c=login&a=logout" class="btn btn-danger">Cerrar sesión</a>
         </div>
