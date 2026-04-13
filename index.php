@@ -2,7 +2,6 @@
 session_start();
 require_once 'Config/config.php';
 require_once 'Modelos/Database.php';
-require_once 'Modelos/ModeloUsuario.php';  // ← agregar esta línea si no existe
 
 $controlador = $_GET['c'] ?? 'login';
 $accion     = $_GET['a'] ?? 'index';

@@ -1,4 +1,5 @@
 <?php
+require_once 'Modelos/ModeloUsuario.php';
 class ControladorLogin {
     
     public function index() {

@@ -1,4 +1,5 @@
 <?php
+require_once 'Modelos/ModeloUsuario.php';
 class ControladorPerfil {
     public function index() {
         if (!isset($_SESSION['usuario_id'])) {
