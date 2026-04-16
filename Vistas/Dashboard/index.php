@@ -1,6 +1,10 @@
 <?php
-// El controlador ya ha definido: $actividades, $totalActividades, $actividadesPorCategoria, $totalMisActividades
+// Al inicio del dashboard, antes del HTML
+require_once 'Modelos/ModeloNotificacion.php';
+$modeloNotif = new ModeloNotificacion();
+$notificacionesNoLeidas = $modeloNotif->contarNoLeidas($_SESSION['usuario_id']);
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -28,15 +32,28 @@
 </head>
 <body>
 <div class="container">
+    <h1>UnioApp</h1>
     <div class="header">
-        <h1>UnioApp</h1>
+        
         <div>
+
             <span>Bienvenido, <?= htmlspecialchars($_SESSION['usuario_nombre']) ?></span>
+
+            <a href="<?= BASE_URL ?>?c=notificacion" class="btn">
+                Notificaciones
+                <?php if ($notificacionesNoLeidas > 0): ?>
+                    <span style=""><?= $notificacionesNoLeidas ?></span>
+                <?php endif; ?>
+            </a>
             <a href="<?= BASE_URL ?>?c=actividad&a=crear" class="btn btn-success">+ Crear actividad</a>
             <a href="<?= BASE_URL ?>?c=actividad&a=edicion" class="btn btn-success">Editar actividad</a>
             <a href="<?= BASE_URL ?>?c=mensajes&a=chats" class="btn">Mensajes y grupos</a>
             <a href="<?= BASE_URL ?>?c=perfil&a=index" class="btn">Mi perfil</a>
             <a href="<?= BASE_URL ?>?c=login&a=logout" class="btn btn-danger">Cerrar sesión</a>
+
+
+            
+
         </div>
     </div>
 

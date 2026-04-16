@@ -1,78 +1,29 @@
+<?php require_once 'Modelos/ModeloUsuario.php';?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detalles de Actividad - UnioApp</title>
-    <!-- Leaflet CSS y JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: #f4f4f4;
-        }
-        .container {
-            max-width: 1000px;
-            margin: auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f4f4f4; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
         header h1 { margin-top: 0; }
-        section {
-            margin-bottom: 25px;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 15px;
-        }
-        button {
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
+        section { margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+        button { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; }
         button:hover { background: #218838; }
-        .volver {
-            display: inline-block;
-            margin-top: 20px;
-            color: #007bff;
-            text-decoration: none;
-        }
+        .volver { display: inline-block; margin-top: 20px; color: #007bff; text-decoration: none; }
         .volver:hover { text-decoration: underline; }
-        #map {
-            height: 300px;
-            border-radius: 8px;
-            margin-top: 10px;
-        }
-        .resena-item {
-            background: #f9f9f9;
-            padding: 12px;
-            margin-bottom: 12px;
-            border-radius: 6px;
-        }
-        .calificacion {
-            color: #ffc107;
-            font-weight: bold;
-        }
-        .form-resena {
-            background: #f0f0f0;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-        }
-        .form-resena select, .form-resena textarea {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 10px;
-        }
+        #map { height: 300px; border-radius: 8px; margin-top: 10px; }
+        .resena-item { background: #f9f9f9; padding: 12px; margin-bottom: 12px; border-radius: 6px; }
+        .calificacion { color: #ffc107; font-weight: bold; }
+        .form-resena { background: #f0f0f0; padding: 15px; border-radius: 8px; margin-top: 15px; }
+        .form-resena select, .form-resena textarea { width: 100%; padding: 8px; margin-bottom: 10px; }
         .error { color: red; }
         .exito { color: green; }
+        .info { background: #e7f3ff; padding: 10px; border-radius: 5px; margin-bottom: 15px; }
     </style>
 </head>
 <body>
@@ -82,55 +33,59 @@
     </header>
 
     <main>
-        <div style="flex: 0 0 200px;">
-            <?php if ($actividad['foto_base64']): ?>
-                <img src="<?= $actividad['foto_base64'] ?>" alt="Foto de la actividad" style="width: 100%; border-radius: 8px;">
-            <?php else: ?>
-                <div style="width: 100%; height: 150px; background: #ccc; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #666;">Sin imagen</div>
-            <?php endif; ?>
+        <?php if (isset($_SESSION['error_participacion'])): ?>
+            <div class="error"><?= htmlspecialchars($_SESSION['error_participacion']) ?></div>
+            <?php unset($_SESSION['error_participacion']); ?>
+        <?php endif; ?>
+        <?php if (isset($_SESSION['exito_participacion'])): ?>
+            <div class="exito"><?= htmlspecialchars($_SESSION['exito_participacion']) ?></div>
+            <?php unset($_SESSION['exito_participacion']); ?>
+        <?php endif; ?>
+
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <div style="flex: 1;">
+                <!-- Foto de actividad -->
+                <?php if ($actividad['foto_base64']): ?>
+                    <img src="<?= $actividad['foto_base64'] ?>" alt="Foto de la actividad" style="width: 100%; max-width: 300px; border-radius: 8px;">
+                <?php else: ?>
+                    <div style="width: 100%; max-width: 300px; height: 150px; background: #ccc; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #666;">Sin imagen</div>
+                <?php endif; ?>
+            </div>
+            <div style="flex: 3;">
+                <h2><?= htmlspecialchars($actividad['nombre']) ?></h2>
+                <p><strong>Organizado por:</strong> <?= htmlspecialchars($actividad['organizador_nombre']) ?></p>
+                <p><strong>Publicado:</strong> <?= $actividad['fecha_publicacion'] ?> <?= $actividad['hora_publicacion'] ?></p>
+                <p><strong>Acceso:</strong> <?= $actividad['tipo_acceso_legible'] ?></p>
+                <p><strong>Categoría:</strong> <?= htmlspecialchars($actividad['categoria']) ?></p>
+            </div>
         </div>
 
-        <!-- Información principal -->
-        <section>
-            <h2><?= htmlspecialchars($actividad['nombre']) ?></h2>
-            <p><strong>Organizado por:</strong> <?= htmlspecialchars($actividad['organizador_nombre']) ?></p>
-            <p><strong>Publicado:</strong> <?= $actividad['fecha_publicacion'] ?> <?= $actividad['hora_publicacion'] ?></p>
-            <p><strong>Acceso:</strong> <?= $actividad['tipo_acceso_legible'] ?></p>
-            <p><strong>Categoría:</strong> <?= htmlspecialchars($actividad['categoria']) ?></p>
-        </section>
-
-        <!-- Capacidad -->
         <section>
             <h3>Capacidad</h3>
             <p><strong>Confirmados:</strong> <?= $actividad['asistentes_confirmados'] ?> / <?= $actividad['capacidad_max'] ?></p>
             <p><strong>Mínimo:</strong> <?= $actividad['capacidad_min'] ?></p>
         </section>
 
-        <!-- Horario -->
         <section>
             <h3>Horario</h3>
-            <p><strong>Inicio:</strong> <?= $actividad['fecha_inicio'] ?> <?= $actividad['hora_inicio'] ?></p>
-            <p><strong>Fin:</strong> <?= $actividad['fecha_fin'] ?> <?= $actividad['hora_fin'] ?></p>
+            <p><strong>Inicio:</strong> <?= date('d/m/Y H:i', strtotime($actividad['fecha_inicio'])) ?></p>
+            <p><strong>Fin:</strong> <?= date('d/m/Y H:i', strtotime($actividad['fecha_fin'])) ?></p>
         </section>
 
-        <!-- Rango de edad -->
         <section>
             <h3>Rango de Edad</h3>
             <p><?= $actividad['edad_minima'] ?> - <?= $actividad['edad_maxima'] ?> años</p>
         </section>
 
-        <!-- Mapa de ubicación -->
         <section>
             <h3>Ubicación</h3>
             <div id="map"></div>
             <p class="coordenadas">Coordenadas: <?= $actividad['lat'] ?>, <?= $actividad['lng'] ?></p>
         </section>
 
-        <!-- Descripción y requisitos -->
         <section>
             <h3>Sobre la actividad</h3>
             <p><?= nl2br(htmlspecialchars($actividad['descripcion'])) ?></p>
-
             <?php if (!empty($actividad['requisitos_array'])): ?>
                 <h4>Qué traer / Requisitos</h4>
                 <ul>
@@ -144,36 +99,57 @@
             <?php endif; ?>
         </section>
 
-        <!-- Botón de asistencia -->
+        <!-- Botón de asistencia con validaciones -->
         <section>
             <?php
-            // Verificar si el usuario ya es participante (estado aceptado)
-            $modeloCheck = new ModeloActividad(); // Para consulta puntual, pero mejor usar una función aparte. Simplificamos con consulta directa.
+            // Obtener datos del usuario logueado para validar edad
+            $modeloUs = new ModeloUsuario();
+            $usuarioActual = $modeloUs->obtenerPorId($_SESSION['usuario_id']);
+            $fecha_nac = new DateTime($usuarioActual['fecha_nacimiento']);
+            $edad_usuario = (new DateTime())->diff($fecha_nac)->y;
+            $cumpleEdad = ($edad_usuario >= $actividad['edad_minima'] && $edad_usuario <= $actividad['edad_maxima']);
+            $capacidadLlena = ($actividad['limite_participantes_max'] !== null && $actividad['asistentes_confirmados'] >= $actividad['limite_participantes_max']);
+            $estadoBloqueado = in_array($actividad['estado'], ['finalizada', 'cancelada', 'en_curso']);
+
+            // Verificar si ya es participante
             $db = Database::getConexion();
-            $sqlCheck = "SELECT estado FROM participantes WHERE id_actividad = :id_act AND id_usuario = :id_user";
+            $sqlCheck = "SELECT estado, rol FROM participantes WHERE id_actividad = :id_act AND id_usuario = :id_user";
             $stmt = $db->prepare($sqlCheck);
             $stmt->execute([':id_act' => $actividad['id_actividad'], ':id_user' => $_SESSION['usuario_id']]);
             $participacion = $stmt->fetch(PDO::FETCH_ASSOC);
             $yaUnido = ($participacion && $participacion['estado'] === 'aceptado');
             $solicitudPendiente = ($participacion && $participacion['estado'] === 'pendiente');
+            $invitado = ($participacion && $participacion['estado'] === 'invitado');
             ?>
             <?php if ($yaUnido): ?>
-                <button disabled style="background: #6c757d;">Ya estás unido a esta actividad</button>
+                <button disabled style="background: #6c757d;">✅ Ya estás unido a esta actividad</button>
             <?php elseif ($solicitudPendiente): ?>
-                <button disabled style="background: #ffc107; color: #333;">Solicitud pendiente de aprobación</button>
+                <button disabled style="background: #ffc107; color: #333;">⏳ Solicitud pendiente de aprobación</button>
+            <?php elseif ($invitado): ?>
+                <form action="<?= BASE_URL ?>?c=participacion&a=solicitar" method="POST">
+                    <input type="hidden" name="id_actividad" value="<?= $actividad['id_actividad'] ?>">
+                    <button type="submit" style="background: #28a745;">Aceptar invitación</button>
+                </form>
+            <?php elseif ($estadoBloqueado): ?>
+                <button disabled style="background: #6c757d;">Actividad no disponible</button>
+            <?php elseif (!$cumpleEdad): ?>
+                <button disabled style="background: #dc3545;">No cumples con el rango de edad</button>
+            <?php elseif ($capacidadLlena): ?>
+                <button disabled style="background: #dc3545;">Actividad llena</button>
+            <?php elseif ($actividad['privacidad'] == 'privada'): ?>
+                <button disabled style="background: #ffc107; color: #333;">🔒 Actividad privada (solo invitados)</button>
             <?php else: ?>
                 <form action="<?= BASE_URL ?>?c=participacion&a=solicitar" method="POST">
                     <input type="hidden" name="id_actividad" value="<?= $actividad['id_actividad'] ?>">
-                    <button type="submit">Confirmar Asistencia</button>
+                    <button type="submit"><?= ($actividad['privacidad'] == 'por_aprobacion') ? 'Solicitar unión' : 'Confirmar Asistencia' ?></button>
                 </form>
             <?php endif; ?>
             <p><?= $actividad['asistentes_extra'] ?> personas más están interesadas o invitadas</p>
         </section>
 
-        <!-- Sección de Reseñas -->
+        <!-- Sección de Reseñas (sin cambios) -->
         <section>
             <h3>Reseñas de participantes</h3>
-
             <?php if (isset($_SESSION['error_resena'])): ?>
                 <div class="error"><?= htmlspecialchars($_SESSION['error_resena']) ?></div>
                 <?php unset($_SESSION['error_resena']); ?>
@@ -226,9 +202,8 @@
 </div>
 
 <script>
-    // Inicializar mapa con la ubicación de la actividad
-    var lat = <?= $actividad['lat'] ?>;
-    var lng = <?= $actividad['lng'] ?>;
+    var lat = <?= (float)$actividad['lat'] ?>;
+    var lng = <?= (float)$actividad['lng'] ?>;
     var map = L.map('map').setView([lat, lng], 15);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CartoDB'

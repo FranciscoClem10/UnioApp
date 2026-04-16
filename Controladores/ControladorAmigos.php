@@ -1,5 +1,6 @@
 <?php
 require_once 'Modelos/ModeloUsuario.php';
+require_once 'Modelos/ModeloNotificacion.php';
 class ControladorAmigos {
     public function nuevosAmigos() {
         if (!isset($_SESSION['usuario_id'])) {
@@ -34,6 +35,17 @@ class ControladorAmigos {
         $modelo = new ModeloUsuario();
         if ($modelo->enviarSolicitudAmistad($_SESSION['usuario_id'], $id_receptor)) {
             $_SESSION['mensaje_amigos'] = "Solicitud enviada correctamente.";
+
+            // Crear notificación para el receptor
+            $modeloNotif = new ModeloNotificacion();
+            $nombreRemitente = $_SESSION['usuario_nombre'] ?? 'Un usuario';
+            $modeloNotif->crear(
+                $id_receptor,
+                'solicitud_amistad',
+                'Nueva solicitud de amistad',
+                "$nombreRemitente te ha enviado una solicitud de amistad.",
+                '?c=perfil'
+            );
         } else {
             $_SESSION['error_amigos'] = "No se pudo enviar la solicitud (quizás ya existe).";
         }
@@ -59,6 +71,26 @@ class ControladorAmigos {
         } else {
             $_SESSION['error_amigos'] = "Error al procesar la solicitud.";
         }
+
+        $modeloNotif = new ModeloNotificacion();
+        if ($accion === 'aceptar') {
+            $modeloNotif->crear(
+                $id_solicitante,
+                'amistad',
+                'Solicitud de amistad aceptada',
+                $_SESSION['usuario_nombre'] . ' ha aceptado tu solicitud de amistad.',
+                '?c=perfil'
+            );
+        } else {
+            $modeloNotif->crear(
+                $id_solicitante,
+                'amistad',
+                'Solicitud de amistad rechazada',
+                $_SESSION['usuario_nombre'] . ' ha rechazado tu solicitud de amistad.',
+                null
+            );
+        }
+
         header('Location: ' . BASE_URL . '?c=perfil');
         exit;
     }

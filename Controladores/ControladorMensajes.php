@@ -2,6 +2,7 @@
 require_once 'Modelos/ModeloUsuario.php';
 require_once 'Modelos/ModeloMensaje.php';
 require_once 'Modelos/ModeloActividad.php';
+require_once 'Modelos/ModeloNotificacion.php';
 
 class ControladorMensajes {
 
@@ -97,6 +98,8 @@ class ControladorMensajes {
 
         $modelo = new ModeloMensaje();
         $exito = false;
+        $redir = '';
+
         if ($tipo == 'actividad') {
             $id_actividad = (int)($_POST['id_actividad'] ?? 0);
             $exito = $modelo->guardarMensajeActividad($id_actividad, $_SESSION['usuario_id'], $contenido);
@@ -105,6 +108,23 @@ class ControladorMensajes {
             $id_amigo = (int)($_POST['id_amigo'] ?? 0);
             $exito = $modelo->guardarMensajePrivado($_SESSION['usuario_id'], $id_amigo, $contenido);
             $redir = '?c=mensajes&a=verPrivado&id=' . $id_amigo;
+
+            // ========== CREAR NOTIFICACIÓN PARA EL DESTINATARIO ==========
+            if ($exito) {
+                $modeloNotif = new ModeloNotificacion();
+                // Obtener nombre completo del remitente
+                $modeloUser = new ModeloUsuario();
+                $remitente = $modeloUser->obtenerPorId($_SESSION['usuario_id']);
+                $nombreRemitente = trim($remitente['nombre'] . ' ' . $remitente['apellido_paterno']);
+                $modeloNotif->crear(
+                    $id_amigo,   // destinatario
+                    'mensaje',
+                    'Nuevo mensaje privado',
+                    $nombreRemitente . ' te ha enviado un mensaje: "' . substr($contenido, 0, 50) . (strlen($contenido) > 50 ? '...' : '') . '"',
+                    '?c=mensajes&a=verPrivado&id=' . $_SESSION['usuario_id']
+                );
+            }
+            // ============================================================
         } else {
             $_SESSION['error_mensaje'] = "Tipo de mensaje inválido.";
             header('Location: ' . BASE_URL . '?c=mensajes&a=chats');
@@ -117,6 +137,7 @@ class ControladorMensajes {
         header('Location: ' . BASE_URL . $redir);
         exit;
     }
+
 
     public function eliminar() {
         if (!isset($_SESSION['usuario_id'])) {
