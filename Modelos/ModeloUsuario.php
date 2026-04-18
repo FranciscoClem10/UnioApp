@@ -9,7 +9,7 @@ class ModeloUsuario {
     // Obtener usuario por ID (con campos separados)
     public function obtenerPorId($id_usuario) {
         $sql = "SELECT id_usuario, nombre, apellido_paterno, apellido_materno, email, telefono, 
-                       fecha_nacimiento, genero, latitud, longitud, biografia, foto_perfil, fecha_registro
+                       fecha_nacimiento, genero, latitud, longitud, biografia, foto_perfil, fecha_registro, ultima_conexion
                 FROM usuarios WHERE id_usuario = :id AND activo = 1";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':id' => $id_usuario]);
@@ -228,6 +228,12 @@ class ModeloUsuario {
                 WHERE id_solicitante = :s AND id_receptor = :r AND estado = 'pendiente'";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([':estado' => $estado, ':s' => $id_solicitante, ':r' => $id_receptor]);
+    }
+
+     public function actualizarUltimaConexion($id_usuario) {
+        $sql = "UPDATE usuarios SET ultima_conexion = NOW() WHERE id_usuario = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([':id' => $id_usuario]);
     }
 }
 ?>

@@ -122,9 +122,9 @@
             $invitado = ($participacion && $participacion['estado'] === 'invitado');
             ?>
             <?php if ($yaUnido): ?>
-                <button disabled style="background: #6c757d;">✅ Ya estás unido a esta actividad</button>
+                <button disabled style="background: #6c757d;"> Ya estás unido a esta actividad</button>
             <?php elseif ($solicitudPendiente): ?>
-                <button disabled style="background: #ffc107; color: #333;">⏳ Solicitud pendiente de aprobación</button>
+                <button disabled style="background: #ffc107; color: #333;">Solicitud pendiente de aprobación</button>
             <?php elseif ($invitado): ?>
                 <form action="<?= BASE_URL ?>?c=participacion&a=solicitar" method="POST">
                     <input type="hidden" name="id_actividad" value="<?= $actividad['id_actividad'] ?>">
@@ -137,7 +137,7 @@
             <?php elseif ($capacidadLlena): ?>
                 <button disabled style="background: #dc3545;">Actividad llena</button>
             <?php elseif ($actividad['privacidad'] == 'privada'): ?>
-                <button disabled style="background: #ffc107; color: #333;">🔒 Actividad privada (solo invitados)</button>
+                <button disabled style="background: #ffc107; color: #333;">Actividad privada (solo invitados)</button>
             <?php else: ?>
                 <form action="<?= BASE_URL ?>?c=participacion&a=solicitar" method="POST">
                     <input type="hidden" name="id_actividad" value="<?= $actividad['id_actividad'] ?>">

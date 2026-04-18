@@ -3,9 +3,8 @@ require_once 'Modelos/ModeloUsuario.php';
 class ControladorLogin {
     
     public function index() {
-        // Si ya está logueado, redirigir al dashboard (pendiente de crear)
         if (isset($_SESSION['usuario_id'])) {
-            // header('Location: ' . BASE_URL . '?c=dashboard');
+            header('Location: ' . BASE_URL . '?c=dashboard&a=index');
             // Por ahora solo mostramos mensaje
             echo "Ya estás logueado. Redirigiendo al dashboard...";
             exit;

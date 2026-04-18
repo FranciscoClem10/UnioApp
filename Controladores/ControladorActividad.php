@@ -473,7 +473,7 @@ class ControladorActividad {
         header('Location: ' . BASE_URL . '?c=actividad&a=editar&id=' . $id_actividad);
         exit;
     }
-    
+
     public function rechazarSolicitud() {
         if (!isset($_SESSION['usuario_id'])) exit;
         $id_actividad = (int)($_GET['id_actividad'] ?? 0);
@@ -496,7 +496,7 @@ class ControladorActividad {
         if ($modelo->cambiarEstadoParticipante($id_actividad, $id_usuario, 'rechazado')) {
             $_SESSION['exito_edicion'] = "Solicitud rechazada.";
 
-            // ✅ Notificación de RECHAZO
+            // Notificación de RECHAZO
             $modeloNotif = new ModeloNotificacion();
             $modeloNotif->crear(
                 $id_usuario,
