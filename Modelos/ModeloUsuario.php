@@ -235,5 +235,29 @@ class ModeloUsuario {
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([':id' => $id_usuario]);
     }
+
+    // Obtener todos los usuarios activos excepto uno dado
+    public function obtenerTodosExcepto($id_usuario) {
+        $sql = "SELECT id_usuario, nombre, apellido_paterno, apellido_materno, email, foto_perfil 
+                FROM usuarios 
+                WHERE activo = 1 AND id_usuario != :id 
+                ORDER BY nombre";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $id_usuario]);
+        $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($usuarios as &$u) {
+            $u['nombre_completo'] = trim($u['nombre'] . ' ' . $u['apellido_paterno'] . ' ' . $u['apellido_materno']);
+            // Si queremos mostrar foto en base64 en el dashboard, podemos procesar aquí
+            if (!empty($u['foto_perfil'])) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_buffer($finfo, $u['foto_perfil']);
+                finfo_close($finfo);
+                $u['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($u['foto_perfil']);
+            } else {
+                $u['foto_base64'] = null;
+            }
+        }
+        return $usuarios;
+    }
 }
 ?>
