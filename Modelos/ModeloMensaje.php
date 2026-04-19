@@ -8,9 +8,6 @@ class ModeloMensaje {
         $this->db = Database::getConexion();
     }
 
-    /**
-     * Obtiene todas las conversaciones del usuario con resumen (último mensaje, no leídos, online)
-     */
     public function obtenerConversaciones($id_usuario) {
         // Subconsulta para obtener el último mensaje de cada conversación
         $sql = "
@@ -74,9 +71,6 @@ class ModeloMensaje {
         return $conversaciones;
     }
 
-    /**
-     * Obtiene mensajes entre dos usuarios con soporte para actualización incremental
-     */
     public function obtenerMensajes($usuario1, $usuario2, $lastId = 0) {
         $stmt = $this->db->prepare("
             SELECT id_mensaje, id_remitente, id_destinatario, contenido, fecha_envio, leido 
@@ -89,9 +83,6 @@ class ModeloMensaje {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Marca mensajes como leídos
-     */
     public function marcarComoLeidos($idDestinatario, $idsMensajes) {
         if (empty($idsMensajes)) return;
         $in = implode(',', array_fill(0, count($idsMensajes), '?'));
@@ -100,9 +91,6 @@ class ModeloMensaje {
         $stmt->execute($params);
     }
 
-    /**
-     * Envía un nuevo mensaje
-     */
     public function enviarMensaje($remitente, $destinatario, $contenido) {
         // Verificar que el destinatario existe
         $stmt = $this->db->prepare("SELECT id_usuario FROM usuarios WHERE id_usuario = ? AND activo = 1");
