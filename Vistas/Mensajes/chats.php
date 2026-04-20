@@ -98,6 +98,6 @@ require_once __DIR__ . '/../../includes/top-nav.php';
     </div>
 </main>
 <?php require_once __DIR__ . '/../../includes/bottom-nav.php'; ?>     
-<script src="<?= BASE_URL ?>Scripts/chatsS.js"></script>
+<?php require_once __DIR__ . '/../../Scripts/ChatsS.php'; ?>   
 </body>
 </html>
