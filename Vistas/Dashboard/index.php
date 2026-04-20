@@ -129,11 +129,11 @@ $notificacionesNoLeidas = $modeloNotif->contarNoLeidas($_SESSION['usuario_id']);
                         <p class="text-xs font-bold"><?= count($actividadesPorCategoria) ?></p>
                         <p class="text-[10px] text-outline">Categorías</p>
                     </div>
-                    <div class="bg-surface-container-lowest p-2 rounded-xl text-center shadow-sm">
+                    <a class="text-[10px] text-outline" href="<?= BASE_URL ?>?c=actividad&a=edicion" class="btn btn-success"><div class="bg-surface-container-lowest p-2 rounded-xl text-center shadow-sm">
                         <span class="material-symbols-outlined text-tertiary text-xl">star</span>
                         <p class="text-xs font-bold"><?= $totalMisActividades ?></p>
-                        <p class="text-[10px] text-outline">Mis eventos</p>
-                    </div>
+                        <p class="text-[10px] text-outline">Mis eventos</p>        
+                    </div></a> 
                 </div>
 
                 <!-- Filtros de intereses (categorías dinámicas desde la BD) -->
