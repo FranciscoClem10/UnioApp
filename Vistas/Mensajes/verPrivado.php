@@ -10,34 +10,28 @@ require_once __DIR__ . '/../../includes/top-nav.php';
 
 <!-- Estilos para el scroll personalizado -->
 <style>
-#mensajesContainer::-webkit-scrollbar {
-    width: 6px;
-}
-#mensajesContainer::-webkit-scrollbar-track {
-    background: #e7e8e8;
-    border-radius: 10px;
-}
-#mensajesContainer::-webkit-scrollbar-thumb {
-    background: #5a2af7;
-    border-radius: 10px;
-}
-#mensajesContainer::-webkit-scrollbar-thumb:hover {
-    background: #4e0bec;
-}
+    #mensajesContainer::-webkit-scrollbar {
+        width: 6px;
+    }
+    #mensajesContainer::-webkit-scrollbar-track {
+        background: #e7e8e8;
+        border-radius: 10px;
+    }
+    #mensajesContainer::-webkit-scrollbar-thumb {
+        background: #5a2af7;
+        border-radius: 10px;
+    }
+    #mensajesContainer::-webkit-scrollbar-thumb:hover {
+        background: #4e0bec;
+    }
 
-/* Firefox */
-#mensajesContainer {
-    scrollbar-width: thin;
-    scrollbar-color: #5a2af7 #e7e8e8;
-}
+    /* Firefox */
+    #mensajesContainer {
+        scrollbar-width: thin;
+        scrollbar-color: #5a2af7 #e7e8e8;
+    }
 </style>
 
-<!-- 
-    Ajuste de altura:
-    64px = top-nav
-    56px = bottom-nav
-    Modifica si tus barras tienen otra altura
--->
 <main class="flex flex-col h-[calc(100dvh-64px-56px)] overflow-hidden max-w-4xl mx-auto w-full">
 
     <!-- Chat Header (siempre visible) -->

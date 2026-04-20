@@ -2,11 +2,10 @@
 require_once 'Modelos/ModeloUsuario.php';
 require_once 'Modelos/ModeloMensaje.php';
 require_once 'Modelos/ModeloNotificacion.php';
-require_once 'Modelos/ModeloActividad.php'; // ¡Importante!
 
 class ControladorMensajes {
 
-    // Lista de conversaciones (privadas + actividades)
+    // Lista de conversaciones privadas
     public function chats() {
         if (!isset($_SESSION['usuario_id'])) {
             header('Location: ' . BASE_URL . '?c=login');
@@ -14,7 +13,6 @@ class ControladorMensajes {
         }
         $modeloMensaje = new ModeloMensaje();
         $conversacionesPrivadas = $modeloMensaje->obtenerConversaciones($_SESSION['usuario_id']);
-        $conversacionesActividad = $modeloMensaje->obtenerConversacionesActividad($_SESSION['usuario_id']);
         require_once 'Vistas/Mensajes/chats.php';
     }
 
@@ -130,82 +128,7 @@ class ControladorMensajes {
         }
     }
 
-    // ================== CHATS DE ACTIVIDAD ==================
-    public function verActividad() {
-        if (!isset($_SESSION['usuario_id'])) {
-            header('Location: ' . BASE_URL);
-            exit;
-        }
-        $id_actividad = (int)($_GET['id'] ?? 0);
-        if (!$id_actividad) {
-            header('Location: ' . BASE_URL . '?c=mensajes&a=chats');
-            exit;
-        }
-        // Verificar que el usuario es participante aceptado
-        $db = Database::getConexion();
-        $stmt = $db->prepare("SELECT 1 FROM participantes WHERE id_actividad = ? AND id_usuario = ? AND estado = 'aceptado'");
-        $stmt->execute([$id_actividad, $_SESSION['usuario_id']]);
-        if (!$stmt->fetchColumn()) {
-            die("No eres participante de esta actividad.");
-        }
-        // Marcar notificaciones de actividad como leídas
-        $modeloNotif = new ModeloNotificacion();
-        $modeloNotif->marcarLeidasPorContexto($_SESSION['usuario_id'], 'mensaje_actividad', $id_actividad);
-        // Obtener datos de la actividad
-        $modeloActividad = new ModeloActividad();
-        $actividad = $modeloActividad->obtenerPorId($id_actividad);
-        if (!$actividad) {
-            header('Location: ' . BASE_URL . '?c=mensajes&a=chats');
-            exit;
-        }
-        require_once 'Vistas/Mensajes/verActividad.php';
-    }
-
-    public function obtenerActividad() {
-        if (!isset($_SESSION['usuario_id'])) {
-            http_response_code(401);
-            echo json_encode(['error' => 'No autorizado']);
-            exit;
-        }
-        $id_actividad = (int)($_GET['id'] ?? 0);
-        $lastId = (int)($_GET['last_id'] ?? 0);
-        if (!$id_actividad) {
-            echo json_encode(['error' => 'Falta actividad']);
-            exit;
-        }
-        $modelo = new ModeloMensaje();
-        $mensajes = $modelo->obtenerMensajesActividad($id_actividad, $_SESSION['usuario_id'], $lastId);
-        header('Content-Type: application/json');
-        echo json_encode(['mensajes' => $mensajes]);
-    }
-
-    public function enviarActividad() {
-        if (!isset($_SESSION['usuario_id'])) {
-            http_response_code(401);
-            echo json_encode(['error' => 'No autorizado']);
-            exit;
-        }
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            http_response_code(405);
-            exit;
-        }
-        $id_actividad = (int)($_POST['id_actividad'] ?? 0);
-        $contenido = trim($_POST['contenido'] ?? '');
-        if (!$id_actividad || !$contenido) {
-            echo json_encode(['error' => 'Datos inválidos']);
-            exit;
-        }
-        $modelo = new ModeloMensaje();
-        $resultado = $modelo->enviarMensajeActividad($id_actividad, $_SESSION['usuario_id'], $contenido);
-        if ($resultado) {
-            $this->notificarParticipantesActividad($id_actividad, $_SESSION['usuario_id'], $contenido);
-            echo json_encode(['success' => true] + $resultado);
-        } else {
-            echo json_encode(['error' => 'No se pudo enviar el mensaje']);
-        }
-    }
-
-    // ================== ELIMINAR MENSAJES ==================
+    // Eliminar mensaje privado (AJAX)
     public function eliminarMensajePrivado() {
         if (!isset($_SESSION['usuario_id'])) {
             http_response_code(401);
@@ -220,44 +143,6 @@ class ControladorMensajes {
         $modelo = new ModeloMensaje();
         $exito = $modelo->eliminarMensajePrivado($id_mensaje, $_SESSION['usuario_id']);
         echo json_encode(['success' => $exito]);
-    }
-
-    public function eliminarMensajeActividad() {
-        if (!isset($_SESSION['usuario_id'])) {
-            http_response_code(401);
-            echo json_encode(['error' => 'No autorizado']);
-            exit;
-        }
-        $id_mensaje = (int)($_GET['id'] ?? 0);
-        if (!$id_mensaje) {
-            echo json_encode(['error' => 'ID inválido']);
-            exit;
-        }
-        $modelo = new ModeloMensaje();
-        $exito = $modelo->eliminarMensajeActividad($id_mensaje, $_SESSION['usuario_id']);
-        echo json_encode(['success' => $exito]);
-    }
-
-    private function notificarParticipantesActividad($id_actividad, $id_remitente, $contenido) {
-        $db = Database::getConexion();
-        $stmt = $db->prepare("SELECT id_usuario FROM participantes WHERE id_actividad = ? AND estado = 'aceptado' AND id_usuario != ?");
-        $stmt->execute([$id_actividad, $id_remitente]);
-        $destinatarios = $stmt->fetchAll(PDO::FETCH_COLUMN);
-        if (empty($destinatarios)) return;
-        $modeloUser = new ModeloUsuario();
-        $remitente = $modeloUser->obtenerPorId($id_remitente);
-        $nombreRemitente = $remitente['nombre_completo'] ?? $remitente['nombre'];
-        $actividad = (new ModeloActividad())->obtenerPorId($id_actividad);
-        $modeloNotif = new ModeloNotificacion();
-        foreach ($destinatarios as $id_dest) {
-            $modeloNotif->crear(
-                $id_dest,
-                'mensaje_actividad',
-                'Nuevo mensaje en ' . $actividad['nombre'],
-                $nombreRemitente . ': ' . substr($contenido, 0, 80),
-                '?c=mensajes&a=verActividad&id=' . $id_actividad
-            );
-        }
     }
 }
 ?>
