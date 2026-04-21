@@ -18,7 +18,8 @@ if (isset($modeloNotif) || class_exists('ModeloNotificacion')) {
         <nav class="hidden md:flex gap-6">
             <a class="text-slate-500 font-medium hover:bg-slate-50 transition-colors px-3 py-2 rounded-lg <?= ($_GET['c'] ?? '') == 'dashboard' ? 'text-primary font-bold' : '' ?>" href="<?= BASE_URL ?>?c=dashboard">Explorar</a>
             <a class="text-slate-500 font-medium hover:bg-slate-50 transition-colors px-3 py-2 rounded-lg <?= (($_GET['c'] ?? '') == 'actividad' && ($_GET['a'] ?? '') == 'crear') ? 'text-primary font-bold' : '' ?>" href="<?= BASE_URL ?>?c=actividad&a=crear">Crear</a>
-            <a class="p-2 rounded-full font-bold transition-transform active:scale-95 inline-block <?= ($_GET['c'] ?? '') == 'mensajes' ? 'text-primary' : 'text-slate-500' ?>" href="<?= BASE_URL ?>?c=mensajes&a=chats">Mis grupos</a>
+            <a class="p-2 rounded-full font-bold transition-transform active:scale-95 inline-block <?= ($_GET['c'] ?? '') == 'mensajes' ? 'text-primary' : 'text-slate-500' ?>" href="<?= BASE_URL ?>?c=mensajes&a=chats">Mensajes privados</a>
+            <a class="p-2 rounded-full font-bold transition-transform active:scale-95 inline-block <?= ($_GET['c'] ?? '') == 'mensajesGrupo' ? 'text-primary' : 'text-slate-500' ?>" href="<?= BASE_URL ?>?c=mensajesGrupo&a=chats">Mensajes de grupo</a>
         </nav>
     </div>
     <div class="relative group">

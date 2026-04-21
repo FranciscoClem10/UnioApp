@@ -94,14 +94,27 @@ class ModeloActividad {
     }
 
     public function obtenerPorId($id_actividad) {
-        $sql = "SELECT a.*, ta.nombre_tipo AS categoria 
-                FROM actividades a 
-                INNER JOIN tipos_actividad ta ON a.id_tipo = ta.id_tipo
+        $sql = "SELECT a.*, t.nombre_tipo,
+                       u.nombre AS creador_nombre, u.apellido_paterno AS creador_apellido_paterno, 
+                       u.apellido_materno AS creador_apellido_materno
+                FROM actividades a
+                LEFT JOIN tipos_actividad t ON a.id_tipo = t.id_tipo
+                LEFT JOIN usuarios u ON a.id_creador = u.id_usuario
                 WHERE a.id_actividad = :id";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':id' => $id_actividad]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $actividad = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($actividad && !empty($actividad['foto_actividad'])) {
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_buffer($finfo, $actividad['foto_actividad']);
+            finfo_close($finfo);
+            $actividad['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($actividad['foto_actividad']);
+        } else {
+            $actividad['foto_base64'] = null;
+        }
+        return $actividad;
     }
+
 
     public function obtenerTiposActividad() {
         $sql = "SELECT id_tipo, nombre_tipo FROM tipos_actividad ORDER BY nombre_tipo";
@@ -514,6 +527,41 @@ class ModeloActividad {
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':id' => $id_actividad]);
         return (int)$stmt->fetchColumn();
+    }
+
+    // Verificar si un usuario es participante aceptado (incluye creador/organizador)
+    public function esParticipanteActivo($id_actividad, $id_usuario) {
+        $sql = "SELECT 1 FROM participantes 
+                WHERE id_actividad = :id_actividad AND id_usuario = :id_usuario 
+                  AND estado = 'aceptado'";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id_actividad' => $id_actividad, ':id_usuario' => $id_usuario]);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    // Obtener participantes de la actividad (para mostrar en el chat)
+    public function obtenerParticipantes($id_actividad) {
+        $sql = "SELECT u.id_usuario, u.nombre, u.apellido_paterno, u.apellido_materno, u.foto_perfil,
+                       p.rol
+                FROM participantes p
+                INNER JOIN usuarios u ON p.id_usuario = u.id_usuario
+                WHERE p.id_actividad = :id_actividad AND p.estado = 'aceptado'
+                ORDER BY FIELD(p.rol, 'creador', 'organizador', 'miembro'), u.nombre";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id_actividad' => $id_actividad]);
+        $participantes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($participantes as &$p) {
+            $p['nombre_completo'] = trim($p['nombre'] . ' ' . $p['apellido_paterno'] . ' ' . $p['apellido_materno']);
+            if (!empty($p['foto_perfil'])) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_buffer($finfo, $p['foto_perfil']);
+                finfo_close($finfo);
+                $p['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($p['foto_perfil']);
+            } else {
+                $p['foto_base64'] = null;
+            }
+        }
+        return $participantes;
     }
 
 }
