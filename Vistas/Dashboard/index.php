@@ -215,7 +215,7 @@ $notificacionesNoLeidas = $modeloNotif->contarNoLeidas($_SESSION['usuario_id']);
         </a>
         <a href="<?= BASE_URL ?>?c=mensajes&a=chats" class="flex flex-col items-center justify-center text-on-surface opacity-60">
             <span class="material-symbols-outlined">chat</span>
-            <span class="text-[10px] font-medium uppercase tracking-widest mt-1">Mis grupos</span>
+            <span class="text-[10px] font-medium uppercase tracking-widest mt-1">Mis Mensjaes</span>
         </a>
     </nav>
 

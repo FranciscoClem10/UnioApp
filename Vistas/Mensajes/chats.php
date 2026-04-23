@@ -27,7 +27,7 @@ require_once __DIR__ . '/../../includes/top-nav.php';
             <?php if (!empty($conversacionesActividad)): ?>
                 <div class="px-4 pt-4 pb-2 text-xs font-semibold text-outline-variant uppercase tracking-wider">Actividades</div>
                 <?php foreach ($conversacionesActividad as $c): ?>
-                    <a href="<?= BASE_URL ?>?c=mensajes&a=verActividad&id=<?= $c['id_actividad'] ?>" class="conversation-item flex items-center gap-3 p-4 md:p-5 hover:bg-surface-container-low transition-all">
+                    <a href="<?= BASE_URL ?>?c=mensajesGrupo&a=verActividad&id=<?= $c['id_actividad'] ?>" class="conversation-item flex items-center gap-3 p-4 md:p-5 hover:bg-surface-container-low transition-all">
                         <div class="relative flex-shrink-0">
                             <?php if (!empty($c['foto_base64'])): ?>
                                 <img class="w-12 h-12 rounded-xl object-cover" src="<?= htmlspecialchars($c['foto_base64']) ?>" alt="Actividad">

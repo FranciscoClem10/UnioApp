@@ -4,6 +4,7 @@
     const idUsuarioActual = <?= (int)$id_usuario_actual ?>;
     let ultimoIdMensaje = <?= !empty($mensajes) ? end($mensajes)['id_mensaje'] : 0 ?>;
     let pollingActivo = true;
+    let pollingEnCurso = false;  // Evita solapamiento de peticiones
 
     // Referencias DOM
     const mensajesContainer = document.getElementById('mensajesContainer');
@@ -19,10 +20,16 @@
         finMensajes.scrollIntoView({ behavior: 'smooth' });
     }
 
-    // Agregar un mensaje al DOM
+    // Agregar un mensaje al DOM (con atributo único para evitar duplicados)
     function agregarMensaje(msg, esPropio) {
+        // Verificar si el mensaje ya existe en el DOM
+        if (document.querySelector(`[data-id-mensaje="${msg.id_mensaje}"]`)) {
+            return; // Ya está agregado, no duplicar
+        }
+
         const divExterior = document.createElement('div');
         divExterior.className = `flex ${esPropio ? 'justify-end' : 'justify-start'}`;
+        divExterior.setAttribute('data-id-mensaje', msg.id_mensaje); // Identificador único
 
         const divInterior = document.createElement('div');
         divInterior.className = `flex ${esPropio ? 'flex-row-reverse' : ''} items-end gap-2 max-w-[80%]`;
@@ -40,7 +47,7 @@
         }
 
         const contenidoDiv = document.createElement('div');
-        // Nombre (si no es propio)
+        // Nombre (solo si no es propio)
         if (!esPropio) {
             const nombreP = document.createElement('p');
             nombreP.className = 'text-xs text-gray-500 mb-1';
@@ -64,24 +71,32 @@
         mensajesContainer.insertBefore(divExterior, finMensajes);
     }
 
-    // Polling para nuevos mensajes
+    // Polling para nuevos mensajes (con control de concurrencia y filtro de duplicados)
     async function pollNuevosMensajes() {
-        if (!pollingActivo) return;
+        if (!pollingActivo || pollingEnCurso) return;
+        pollingEnCurso = true;
         try {
-            const response = await fetch(`<?= BASE_URL ?>?c=mensajes&a=obtenerNuevos&id_actividad=${idActividad}&ultimo_id=${ultimoIdMensaje}`);
+            const response = await fetch(`<?= BASE_URL ?>?c=mensajesGrupo&a=obtenerNuevos&id_actividad=${idActividad}&ultimo_id=${ultimoIdMensaje}`);
             const data = await response.json();
             if (data.mensajes && data.mensajes.length > 0) {
+                let maxId = ultimoIdMensaje;
                 data.mensajes.forEach(msg => {
-                    const esPropio = (msg.id_usuario == idUsuarioActual);
-                    agregarMensaje(msg, esPropio);
-                    ultimoIdMensaje = Math.max(ultimoIdMensaje, msg.id_mensaje);
+                    // Verificar si el mensaje ya fue agregado al DOM
+                    if (!document.querySelector(`[data-id-mensaje="${msg.id_mensaje}"]`)) {
+                        const esPropio = (msg.id_usuario == idUsuarioActual);
+                        agregarMensaje(msg, esPropio);
+                        if (msg.id_mensaje > maxId) maxId = msg.id_mensaje;
+                    }
                 });
-                scrollToBottom();
+                ultimoIdMensaje = maxId;
+                if (data.mensajes.length > 0) scrollToBottom();
             }
         } catch (error) {
             console.error('Error en polling:', error);
+        } finally {
+            pollingEnCurso = false;
+            setTimeout(pollNuevosMensajes, 2000);
         }
-        setTimeout(pollNuevosMensajes, 2000);
     }
 
     // Enviar mensaje
@@ -90,7 +105,6 @@
         const contenido = inputMensaje.value.trim();
         if (!contenido) return;
 
-        // Deshabilitar mientras se envía
         const btnSubmit = formMensaje.querySelector('button[type="submit"]');
         btnSubmit.disabled = true;
 
@@ -99,15 +113,15 @@
             formData.append('id_actividad', idActividad);
             formData.append('contenido', contenido);
 
-            const response = await fetch('<?= BASE_URL ?>?c=mensajes&a=enviar', {
+            const response = await fetch('<?= BASE_URL ?>?c=mensajesGrupo&a=enviar', {
                 method: 'POST',
                 body: formData
             });
             const data = await response.json();
             if (data.success) {
                 inputMensaje.value = '';
-                // Forzar polling inmediato
-                setTimeout(() => pollNuevosMensajes(), 100);
+                // No forzamos polling inmediato para evitar carreras; el intervalo normal lo traerá.
+                // Si quieres respuesta más rápida, implementa la solución 3 (mensaje local + ID real).
             } else {
                 alert('Error al enviar: ' + (data.error || 'Desconocido'));
             }
