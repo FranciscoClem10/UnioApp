@@ -59,7 +59,7 @@ require_once __DIR__ . '/../../includes/top-nav.php';
             </div>
         </div>
         <div class="flex items-center gap-2">
-            <a href="<?= BASE_URL ?>?c=perfil&a=ver&id=<?= $destinatario['id_usuario'] ?>" class="flex items-center gap-2 px-4 py-2 bg-surface-container-low text-primary text-sm font-semibold rounded-full hover:bg-surface-container transition-colors">
+            <a href="<?= BASE_URL ?>?c=amigos&a=verPerfil&id=<?= $destinatario['id_usuario'] ?>" class="flex items-center gap-2 px-4 py-2 bg-surface-container-low text-primary text-sm font-semibold rounded-full hover:bg-surface-container transition-colors">
                 <span class="material-symbols-outlined text-sm">person</span>
                 Ver perfil
             </a>
