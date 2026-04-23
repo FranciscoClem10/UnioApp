@@ -7,14 +7,7 @@ require_once 'Modelos/ModeloActividad.php';
 
 class ControladorMensajes {
 
-    // ------------------------------------------------------------------
-    // MÉTODOS PARA CHATS (COMUNES)
-    // ------------------------------------------------------------------
-
-    /**
-     * Lista combinada de conversaciones (privadas + actividades)
-     * Reemplaza a los dos métodos chats() anteriores
-     */
+    // MÉTODO chats
     public function chats() {
         if (!isset($_SESSION['usuario_id'])) {
             header('Location: ' . BASE_URL . '?c=login');
@@ -32,14 +25,40 @@ class ControladorMensajes {
         // Obtener conversaciones de actividades
         $conversacionesActividad = $modeloMensajeGrupo->obtenerConversacionesActividad($id_usuario);
 
+        // --- NUEVO: Obtener lista de amigos (aceptados) ---
+        $db = Database::getConexion();
+        $stmt = $db->prepare("
+            SELECT u.id_usuario, u.nombre, u.apellido_paterno, u.apellido_materno, u.foto_perfil, u.ultima_conexion,
+                CONCAT(u.nombre, ' ', u.apellido_paterno, ' ', u.apellido_materno) AS nombre_completo
+            FROM usuarios u
+            INNER JOIN amistades a ON (a.id_solicitante = u.id_usuario OR a.id_receptor = u.id_usuario)
+            WHERE (a.id_solicitante = :id AND a.id_receptor = u.id_usuario
+                OR a.id_receptor = :id AND a.id_solicitante = u.id_usuario)
+            AND a.estado = 'aceptado'
+            AND u.id_usuario != :id
+            AND u.activo = 1
+            ORDER BY u.nombre ASC
+        ");
+        $stmt->execute([':id' => $id_usuario]);
+        $amigos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Procesar foto_base64 para cada amigo
+        foreach ($amigos as &$a) {
+            if (!empty($a['foto_perfil'])) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_buffer($finfo, $a['foto_perfil']);
+                finfo_close($finfo);
+                $a['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($a['foto_perfil']);
+            } else {
+                $a['foto_base64'] = null;
+            }
+            $a['online'] = (strtotime($a['ultima_conexion'] ?? '2000-01-01') > time() - 300);
+        }
+
         require_once 'Vistas/Mensajes/chats.php';
     }
 
-    // ------------------------------------------------------------------
     // MÉTODOS PARA MENSAJES PRIVADOS
-    // ------------------------------------------------------------------
-
-    /** Vista del chat privado (carga inicial) */
     public function verPrivado() {
         if (!isset($_SESSION['usuario_id'])) {
             header('Location: ' . BASE_URL);
@@ -170,11 +189,7 @@ class ControladorMensajes {
         echo json_encode(['success' => $exito]);
     }
 
-    // ------------------------------------------------------------------
     // MÉTODOS PARA MENSAJES DE ACTIVIDADES / GRUPOS
-    // ------------------------------------------------------------------
-
-    /** Vista del chat de actividad (antes verActividad) */
     public function verActividad() {
         if (!isset($_SESSION['usuario_id'])) {
             header('Location: ' . BASE_URL . '?c=login');

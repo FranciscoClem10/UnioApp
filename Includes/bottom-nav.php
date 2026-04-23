@@ -12,6 +12,6 @@ if (!isset($_SESSION['usuario_id'])) return;
     </a>
     <a href="<?= BASE_URL ?>?c=mensajes&a=chats" class="flex flex-col items-center justify-center bg-primary/10 text-primary rounded-2xl px-4 py-1">
         <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">chat</span>
-        <span class="text-[10px] font-medium uppercase tracking-widest mt-1">Mis grupos</span>
+        <span class="text-[10px] font-medium uppercase tracking-widest mt-1">Mensajes</span>
     </a>
 </nav>
