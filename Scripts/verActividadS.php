@@ -76,7 +76,8 @@
         if (!pollingActivo || pollingEnCurso) return;
         pollingEnCurso = true;
         try {
-            const response = await fetch(`<?= BASE_URL ?>?c=mensajesGrupo&a=obtenerNuevos&id_actividad=${idActividad}&ultimo_id=${ultimoIdMensaje}`);
+            // Ruta actualizada para el controlador unificado
+            const response = await fetch(`<?= BASE_URL ?>?c=mensajes&a=obtenerNuevosMensajesActividad&id_actividad=${idActividad}&ultimo_id=${ultimoIdMensaje}`);
             const data = await response.json();
             if (data.mensajes && data.mensajes.length > 0) {
                 let maxId = ultimoIdMensaje;
@@ -113,15 +114,17 @@
             formData.append('id_actividad', idActividad);
             formData.append('contenido', contenido);
 
-            const response = await fetch('<?= BASE_URL ?>?c=mensajesGrupo&a=enviar', {
+            // Ruta actualizada para el controlador unificado
+            const response = await fetch('<?= BASE_URL ?>?c=mensajes&a=enviarMensajeActividad', {
                 method: 'POST',
                 body: formData
             });
             const data = await response.json();
             if (data.success) {
                 inputMensaje.value = '';
-                // No forzamos polling inmediato para evitar carreras; el intervalo normal lo traerá.
-                // Si quieres respuesta más rápida, implementa la solución 3 (mensaje local + ID real).
+                // Opcional: feedback local inmediato (puedes agregar un mensaje temporal)
+                // Si deseas, podemos llamar a pollNuevosMensajes() inmediatamente para traer el mensaje enviado
+                // pero como el polling ya corre cada 2 seg, no es necesario.
             } else {
                 alert('Error al enviar: ' + (data.error || 'Desconocido'));
             }
