@@ -9,34 +9,32 @@ require_once __DIR__ . '/../../includes/top-nav.php';
 ?>
 
 <main class="flex flex-col h-[calc(100dvh-64px-56px)] overflow-hidden max-w-4xl mx-auto w-full">
+<br>
+<div class="mb-6 text-center md:text-left">
+    <h1 class="text-[2.5rem] md:text-[3.5rem] font-extrabold tracking-tight leading-tight text-on-surface mb-2 font-headline">Conversaciones</h1>
+    <p class="text-on-surface-variant max-w-xl">Conecta con tu comunidad, comparte ideas y haz que cada mensaje cuente.</p>
+</div>
     <div class="flex flex-col flex-1 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm border border-surface-container-low overflow-hidden">
-        <!-- Cabecera con botón nuevo chat -->
-        <div class="p-5 md:p-6 border-b border-surface-container-low shrink-0 flex justify-between items-center">
-            <h2 class="text-xl md:text-2xl font-extrabold tracking-tight text-on-surface flex items-center gap-2">
-                <span class="material-symbols-outlined text-primary">forum</span>
-                Mis conversaciones
-            </h2>
-            <button id="btnNuevoChat" class="bg-primary text-on-primary px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-semibold shadow-md hover:bg-primary-dark transition">
-                <span class="material-symbols-outlined text-base">chat</span>
-                Nuevo chat
-            </button>
+        <!-- Cabecera: título + botón nuevo chat (ahora juntos) -->
+        <div class="px-4 md:px-6 pt-4 md:pt-6 pb-2 md:pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
+            
         </div>
 
-        <!-- Buscador (ya existente) -->
-        <div class="p-4 md:p-6 border-b border-surface-container-low shrink-0">
+        <!-- Buscador -->
+        <div class="px-4 md:px-6 pb-3 shrink-0">
             <div class="relative">
                 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-base">search</span>
-                <input type="text" id="searchConversacion" class="w-full bg-surface-container-low border-none rounded-xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20" placeholder="Buscar...">
+                <input type="text" id="searchConversacion" class="w-full bg-surface-container-low border-none rounded-xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20" placeholder="Buscar conversación...">
             </div>
         </div>
 
-        <!-- Lista de conversaciones (igual que antes) -->
-        <div id="listaConversaciones" class="flex-1 overflow-y-auto divide-y divide-surface-container-low">
+        <!-- Lista de conversaciones (scrollable) -->
+        <div id="listaConversaciones" class="flex-1 overflow-y-auto divide-y divide-surface-container-low px-2 md:px-4">
             <!-- Sección: Chats de actividades -->
             <?php if (!empty($conversacionesActividad)): ?>
-                <div class="px-4 pt-4 pb-2 text-xs font-semibold text-outline-variant uppercase tracking-wider">Actividades</div>
+                <div class="px-2 pt-3 pb-1 text-xs font-semibold text-outline-variant uppercase tracking-wider">Actividades</div>
                 <?php foreach ($conversacionesActividad as $c): ?>
-                    <a href="<?= BASE_URL ?>?c=mensajesGrupo&a=verActividad&id=<?= $c['id_actividad'] ?>" class="conversation-item flex items-center gap-3 p-4 md:p-5 hover:bg-surface-container-low transition-all">
+                    <a href="<?= BASE_URL ?>?c=mensajesGrupo&a=verActividad&id=<?= $c['id_actividad'] ?>" class="conversation-item flex items-center gap-3 p-3 md:p-4 hover:bg-surface-container-low rounded-xl transition-all">
                         <div class="relative flex-shrink-0">
                             <?php if (!empty($c['foto_base64'])): ?>
                                 <img class="w-12 h-12 rounded-xl object-cover" src="<?= htmlspecialchars($c['foto_base64']) ?>" alt="Actividad">
@@ -51,9 +49,7 @@ require_once __DIR__ . '/../../includes/top-nav.php';
                                 <h3 class="text-[15px] font-bold text-on-surface truncate"><?= htmlspecialchars($c['nombre_actividad']) ?></h3>
                             </div>
                             <div class="flex items-center justify-between gap-2 mt-0.5">
-                                <p class="text-xs text-on-surface-variant truncate">
-                                    <?= htmlspecialchars(mb_substr($c['ultimo_mensaje'] ?? '', 0, 45)) ?>
-                                </p>
+                                <p class="text-xs text-on-surface-variant truncate"><?= htmlspecialchars(mb_substr($c['ultimo_mensaje'] ?? '', 0, 45)) ?></p>
                                 <?php if (isset($c['no_leidos']) && $c['no_leidos'] > 0): ?>
                                     <span class="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full"><?= $c['no_leidos'] > 9 ? '9+' : $c['no_leidos'] ?></span>
                                 <?php endif; ?>
@@ -65,19 +61,19 @@ require_once __DIR__ . '/../../includes/top-nav.php';
 
             <!-- Sección: Chats privados -->
             <?php if (!empty($conversacionesPrivadas)): ?>
-                <div class="px-4 pt-4 pb-2 text-xs font-semibold text-outline-variant uppercase tracking-wider">Amigos</div>
+                <div class="px-2 pt-3 pb-1 text-xs font-semibold text-outline-variant uppercase tracking-wider">Amigos</div>
                 <?php foreach ($conversacionesPrivadas as $c): ?>
-                    <a href="<?= BASE_URL ?>?c=mensajes&a=verPrivado&id=<?= $c['id_usuario'] ?>" class="conversation-item flex items-center gap-3 p-4 md:p-5 hover:bg-surface-container-low transition-all">
+                    <a href="<?= BASE_URL ?>?c=mensajes&a=verPrivado&id=<?= $c['id_usuario'] ?>" class="conversation-item flex items-center gap-3 p-3 md:p-4 hover:bg-surface-container-low rounded-xl transition-all">
                         <div class="relative flex-shrink-0">
                             <?php if (!empty($c['foto_base64'])): ?>
-                                <img class="w-12 h-12 rounded-xl object-cover" src="<?= htmlspecialchars($c['foto_base64']) ?>" alt="Avatar">
+                                <img class="w-12 h-12 rounded-full object-cover" src="<?= htmlspecialchars($c['foto_base64']) ?>" alt="Avatar">
                             <?php else: ?>
-                                <div class="w-12 h-12 rounded-xl bg-primary-container/30 flex items-center justify-center text-primary">
+                                <div class="w-12 h-12 rounded-full bg-primary-container/30 flex items-center justify-center text-primary">
                                     <span class="material-symbols-outlined text-2xl">person</span>
                                 </div>
                             <?php endif; ?>
                             <?php if (isset($c['online']) && $c['online']): ?>
-                                <span class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></span>
+                                <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
                             <?php endif; ?>
                         </div>
                         <div class="flex-1 min-w-0">
@@ -154,28 +150,44 @@ require_once __DIR__ . '/../../includes/top-nav.php';
     </div>
 </div>
 
-<!-- Script para controlar el modal -->
+<!-- Botón flotante + -->
+<button id="btnNuevoChat" class="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-50 w-14 h-14 bg-primary text-on-primary rounded-full shadow-lg flex items-center justify-center hover:bg-primary-dark transition active:scale-95">
+    <span class="material-symbols-outlined text-2xl">add</span>
+</button>
+
+<!-- Script para controlar el modal (mejorado con tecla ESC) -->
 <script>
     const btnNuevoChat = document.getElementById('btnNuevoChat');
     const modal = document.getElementById('modalNuevoChat');
     const cerrarModal = document.getElementById('cerrarModal');
 
+    function abrirModal() {
+        modal.classList.remove('hidden');
+    }
+
+    function cerrarModalFunc() {
+        modal.classList.add('hidden');
+    }
+
     if (btnNuevoChat) {
-        btnNuevoChat.addEventListener('click', () => {
-            modal.classList.remove('hidden');
-        });
+        btnNuevoChat.addEventListener('click', abrirModal);
     }
 
     if (cerrarModal) {
-        cerrarModal.addEventListener('click', () => {
-            modal.classList.add('hidden');
-        });
+        cerrarModal.addEventListener('click', cerrarModalFunc);
     }
 
     // Cerrar al hacer clic fuera del contenido
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
-            modal.classList.add('hidden');
+            cerrarModalFunc();
+        }
+    });
+
+    // Cerrar con tecla ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+            cerrarModalFunc();
         }
     });
 </script>

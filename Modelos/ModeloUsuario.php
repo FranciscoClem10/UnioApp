@@ -259,5 +259,109 @@ class ModeloUsuario {
         }
         return $usuarios;
     }
+
+    public function obtenerUsuugeridos($id_usuario, $limite = 10) {
+        $sql = "SELECT u.id_usuario, u.nombre, u.apellido_paterno, u.apellido_materno, u.email, u.foto_perfil,
+                    CONCAT(u.nombre, ' ', u.apellido_paterno, ' ', u.apellido_materno) as nombre_completo
+                FROM usuarios u
+                WHERE u.activo = 1 
+                AND u.id_usuario != :id_actual
+                AND NOT EXISTS (
+                    SELECT 1 FROM amistades a 
+                    WHERE (a.id_solicitante = u.id_usuario AND a.id_receptor = :id_actual)
+                        OR (a.id_solicitante = :id_actual AND a.id_receptor = u.id_usuario)
+                )
+                ORDER BY u.nombre ASC
+                LIMIT :limite";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindParam(':id_actual', $id_usuario, PDO::PARAM_INT);
+        $stmt->bindParam(':limite', $limite, PDO::PARAM_INT);
+        $stmt->execute();
+        $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($usuarios as &$u) {
+            // foto base64 para mostrar en modal
+            if (!empty($u['foto_perfil'])) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_buffer($finfo, $u['foto_perfil']);
+                finfo_close($finfo);
+                $u['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($u['foto_perfil']);
+            } else {
+                $u['foto_base64'] = null;
+            }
+        }
+        return $usuarios;
+    }
+
+    public function obtenerRechazados($id_usuario) {
+        $sql = "SELECT u.id_usuario, u.nombre, u.apellido_paterno, u.apellido_materno, u.email, u.foto_perfil,
+                    CONCAT(u.nombre, ' ', u.apellido_paterno, ' ', u.apellido_materno) AS nombre_completo,
+                    a.fecha_respuesta
+                FROM amistades a
+                INNER JOIN usuarios u ON a.id_solicitante = u.id_usuario
+                WHERE a.id_receptor = :id_receptor AND a.estado = 'rechazado'
+                ORDER BY a.fecha_respuesta DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id_receptor' => $id_usuario]);
+        $rechazados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($rechazados as &$u) {
+            if (!empty($u['foto_perfil'])) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_buffer($finfo, $u['foto_perfil']);
+                finfo_close($finfo);
+                $u['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($u['foto_perfil']);
+            } else {
+                $u['foto_base64'] = null;
+            }
+        }
+        return $rechazados;
+    }
+
+    public function desrechazarUsuario($id_usuario, $id_rechazado) {
+        $sql = "DELETE FROM amistades 
+                WHERE id_solicitante = :solicitante 
+                AND id_receptor = :receptor 
+                AND estado = 'rechazado'";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            ':solicitante' => $id_rechazado,
+            ':receptor' => $id_usuario
+        ]);
+    }
+
+    public function bloquearUsuario($id_usuario, $id_bloquear) {
+        // Verificar si ya existe relación
+        $sqlCheck = "SELECT estado FROM amistades 
+                    WHERE (id_solicitante = :s1 AND id_receptor = :r1)
+                        OR (id_solicitante = :s2 AND id_receptor = :r2)";
+        $stmt = $this->db->prepare($sqlCheck);
+        $stmt->execute([
+            ':s1' => $id_usuario, ':r1' => $id_bloquear,
+            ':s2' => $id_bloquear, ':r2' => $id_usuario
+        ]);
+        $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($existing) {
+            // Actualizar a bloqueado
+            $sqlUpdate = "UPDATE amistades SET estado = 'bloqueado', fecha_respuesta = NOW()
+                        WHERE (id_solicitante = :s1 AND id_receptor = :r1)
+                            OR (id_solicitante = :s2 AND id_receptor = :r2)";
+            $stmtUp = $this->db->prepare($sqlUpdate);
+            return $stmtUp->execute([
+                ':s1' => $id_usuario, ':r1' => $id_bloquear,
+                ':s2' => $id_bloquear, ':r2' => $id_usuario
+            ]);
+        } else {
+            // Crear nuevo registro bloqueado
+            $sqlInsert = "INSERT INTO amistades (id_solicitante, id_receptor, estado, fecha_respuesta)
+                        VALUES (:s, :r, 'bloqueado', NOW())";
+            $stmtIn = $this->db->prepare($sqlInsert);
+            return $stmtIn->execute([
+                ':s' => $id_usuario,
+                ':r' => $id_bloquear
+            ]);
+        }
+    }
 }
 ?>

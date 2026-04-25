@@ -19,13 +19,13 @@ $accion = $_GET['a'] ?? '';
         <span class="text-[10px] font-medium uppercase tracking-widest mt-1">Crear</span>
     </a>
 
+
     <a href="<?= BASE_URL ?>?c=mensajes&a=chats"
-       class="flex flex-col items-center justify-center <?= $controlador === 'mensajes' ? 'bg-primary/10 text-primary rounded-2xl px-4 py-1' : 'text-on-surface opacity-60' ?>">
-        <span class="material-symbols-outlined"
-              style="<?= $controlador === 'mensajes' ? "font-variation-settings: 'FILL' 1;" : '' ?>">
-            chat
-        </span>
+        class="flex flex-col items-center justify-center <?= $controlador === 'mensajes' ? 'text-primary' : 'text-on-surface opacity-60' ?>">
+        <span class="material-symbols-outlined">chat</span>
         <span class="text-[10px] font-medium uppercase tracking-widest mt-1">Mensajes</span>
     </a>
+
+
 
 </nav>
