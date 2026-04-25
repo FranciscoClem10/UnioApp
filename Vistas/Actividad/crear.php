@@ -4,171 +4,225 @@ if (!isset($_SESSION['usuario_id'])) {
     header('Location: ' . BASE_URL . '?c=login');
     exit;
 }
+
+$form_data = $_SESSION['form_actividad'] ?? [];
+unset($_SESSION['form_actividad']);
+
+function getOld($field, $default = '') {
+    global $form_data;
+    return htmlspecialchars($form_data[$field] ?? $default);
+}
+
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Crear nueva actividad - UnioApp</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background: #f0f2f5; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        .campo { margin-bottom: 18px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; }
-        input, select, textarea { width: 100%; padding: 8px; box-sizing: border-box; }
-        button { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
-        button:hover { background: #218838; }
-        .error { color: red; margin-bottom: 15px; padding: 10px; background: #ffe6e6; border-radius: 5px; }
-        #map { height: 300px; margin-top: 5px; border-radius: 8px; border: 1px solid #ccc; }
-        .coord-info { margin-top: 8px; font-size: 0.9em; color: #555; }
-        .btn-geo { background: #007bff; margin-top: 5px; }
-        .btn-geo:hover { background: #0056b3; }
-        .requerido:after { content: " *"; color: red; }
-    </style>
-</head>
-<body>
-<div class="container">
-    <h2>Crear nueva actividad</h2>
+<?php include 'includes/header.php'; ?>
+<?php include 'includes/top-nav.php'; ?>
 
-    <?php if (isset($_SESSION['error_crear_actividad'])): ?>
-        <div class="error"><?= htmlspecialchars($_SESSION['error_crear_actividad']) ?></div>
-        <?php unset($_SESSION['error_crear_actividad']); ?>
-    <?php endif; ?>
-
-    <form action="<?= BASE_URL ?>?c=actividad&a=guardar" method="POST" enctype="multipart/form-data">
-        <!-- Nombre -->
-        <div class="campo">
-            <label class="requerido">Nombre de la actividad</label>
-            <input type="text" name="nombre" required maxlength="100">
-        </div>
-
-        <!-- Tipo -->
-        <div class="campo">
-            <label class="requerido">Tipo de actividad</label>
-            <select name="id_tipo" required>
-                <option value="">Selecciona un tipo</option>
-                <?php foreach ($tipos as $tipo): ?>
-                    <option value="<?= $tipo['id_tipo'] ?>"><?= htmlspecialchars($tipo['nombre_tipo']) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-
-        <!-- Descripción -->
-        <div class="campo">
-            <label>Descripción</label>
-            <textarea name="descripcion" rows="4"></textarea>
-        </div>
-
-        <!-- Requisitos -->
-        <div class="campo">
-            <label>Requisitos</label>
-            <textarea name="requisitos" rows="3"></textarea>
-        </div>
-
-        <!-- Edades -->
-        <div style="display: flex; gap: 15px;">
-            <div class="campo" style="flex:1">
-                <label>Edad mínima</label>
-                <input type="number" name="edad_minima" value="0" min="0" max="99">
+<div class="overflow-y-auto flex-1 w-full px-4 md:px-8 pb-24">
+    <div class="max-w-4xl mx-auto pt-6">
+        <!-- Mostrar errores si existen -->
+        <?php if (isset($_SESSION['error_crear_actividad'])): ?>
+            <div class="mb-6 p-4 rounded-xl bg-error-container/20 border-l-4 border-error text-on-error-container text-sm font-medium">
+                <?= htmlspecialchars($_SESSION['error_crear_actividad']) ?>
+                <?php unset($_SESSION['error_crear_actividad']); ?>
             </div>
-            <div class="campo" style="flex:1">
-                <label>Edad máxima</label>
-                <input type="number" name="edad_maxima" value="99" min="0" max="99">
+        <?php endif; ?>
+
+        <?php if (isset($_SESSION['warning_imagen'])): ?>
+            <div class="mb-6 p-4 rounded-xl bg-amber-100 border-l-4 border-amber-500 text-amber-800 text-sm font-medium">
+                <?= htmlspecialchars($_SESSION['warning_imagen']) ?>
+                <?php unset($_SESSION['warning_imagen']); ?>
             </div>
+        <?php endif; ?>
+
+        <div class="mb-8 text-center md:text-left">
+            <h1 class="text-[2.5rem] md:text-[3.5rem] font-extrabold tracking-tight leading-tight text-on-surface mb-2 font-headline">Crear actividad</h1>
+            <p class="text-on-surface-variant max-w-xl">Diseña una experiencia única para tu comunidad.</p>
         </div>
 
-        <!-- Límite participantes -->
-        <div style="display: flex; gap: 15px;">
-            <div class="campo" style="flex:1">
-                <label>Mínimo participantes</label>
-                <input type="number" name="limite_participantes_min" value="1" min="1">
-            </div>
-            <div class="campo" style="flex:1">
-                <label>Máximo participantes (opcional)</label>
-                <input type="number" name="limite_participantes_max" min="1">
-            </div>
-        </div>
+        <form action="<?= BASE_URL ?>?c=actividad&a=guardar" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 gap-8">
+            <!-- Sección: Imagen -->
+            <section class="bg-white p-6 md:p-8 rounded-xl shadow-[0_8px_32px_rgba(45,47,47,0.04)] space-y-6">
+                <div class="space-y-4">
+                    <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Imagen de la actividad</label>
+                    <div class="relative w-full">
+                        <input type="file" name="foto_actividad" accept="image/jpeg,image/png,image/webp" id="fotoInput" class="hidden">
+                        <label for="fotoInput" class="aspect-video w-full bg-surface-container-low rounded-xl border-2 border-dashed border-outline-variant flex flex-col items-center justify-center cursor-pointer hover:border-primary/40 transition-all group">
+                            <span class="material-symbols-outlined text-4xl text-on-surface-variant group-hover:text-primary transition-colors">add_photo_alternate</span>
+                            <p class="mt-2 text-sm text-on-surface-variant font-medium">Sube una imagen (JPG, PNG, WEBP, máx. 5MB)</p>
+                        </label>
+                        <div id="previewImage" class="hidden mt-4 relative rounded-xl overflow-hidden"></div>
+                    </div>
+                </div>
+            </section>
 
-        <!-- Privacidad -->
-        <div class="campo">
-            <label>Privacidad</label>
-            <select name="privacidad">
-                <option value="publica">Pública (cualquiera puede unirse)</option>
-                <option value="por_aprobacion">Por aprobación (el organizador acepta)</option>
-                <option value="privada">Privada (solo invitados)</option>
-            </select>
-        </div>
+            <!-- Sección: Nombre + Clasificación -->
+            <section class="bg-white p-6 md:p-8 rounded-xl shadow space-y-8">
+                <div class="space-y-2">
+                    <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Nombre de la actividad <span class="text-error">*</span></label>
+                    <input class="w-full h-14 px-5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface font-body text-lg transition-all" 
+                           placeholder="Ej: Clase magistral de acuarela moderna" 
+                           type="text" name="nombre" required maxlength="100"
+                           value="<?= getOld('nombre') ?>">
+                </div>
 
-        <!-- Fechas (nuevo) -->
-        <div style="display: flex; gap: 15px;">
-            <div class="campo" style="flex:1">
-                <label class="requerido">Fecha y hora de inicio</label>
-                <input type="datetime-local" name="fecha_inicio" required>
+                <div class="space-y-4">
+                    <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Clasificación <span class="text-error">*</span></label>
+                    <div class="flex flex-wrap gap-2" id="tiposContainer">
+                        <?php if (!empty($tipos) && is_array($tipos)): ?>
+                            <?php 
+                            $selected_tipo = getOld('id_tipo', !empty($tipos) ? $tipos[0]['id_tipo'] : '');
+                            foreach ($tipos as $tipo): ?>
+                                <button type="button" data-id="<?= $tipo['id_tipo'] ?>" 
+                                    class="tipo-btn px-5 py-2.5 rounded-full text-sm font-medium transition-all 
+                                    <?= ($tipo['id_tipo'] == $selected_tipo) 
+                                        ? 'bg-primary text-on-primary shadow-sm' 
+                                        : 'bg-surface-container-highest text-on-surface-variant hover:bg-surface-variant' ?>">
+                                    <?= htmlspecialchars($tipo['nombre_tipo']) ?>
+                                </button>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <p class="text-error text-sm">No hay tipos de actividad configurados</p>
+                        <?php endif; ?>
+                    </div>
+                    <input type="hidden" name="id_tipo" id="id_tipo" value="<?= getOld('id_tipo', !empty($tipos) ? $tipos[0]['id_tipo'] : '') ?>" required>
+                </div>
+            </section>
+
+            <!-- Límites y edades -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-6">
+                    <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Límites de Participantes</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <span class="text-xs text-on-surface-variant font-medium">Mínimo</span>
+                            <input class="w-full h-12 px-4 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20" 
+                                   type="number" name="limite_participantes_min" min="1"
+                                   value="<?= getOld('limite_participantes_min', 1) ?>">
+                        </div>
+                        <div>
+                            <span class="text-xs text-on-surface-variant font-medium">Máximo (opcional)</span>
+                            <input class="w-full h-12 px-4 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20" 
+                                   type="number" name="limite_participantes_max" min="1"
+                                   value="<?= getOld('limite_participantes_max') ?>">
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-6">
+                    <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Rango de Edad</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <span class="text-xs text-on-surface-variant font-medium">Edad mínima</span>
+                            <input class="w-full h-12 px-4 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20" 
+                                   type="number" name="edad_minima" min="0" max="99"
+                                   value="<?= getOld('edad_minima', 0) ?>">
+                        </div>
+                        <div>
+                            <span class="text-xs text-on-surface-variant font-medium">Edad máxima</span>
+                            <input class="w-full h-12 px-4 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20" 
+                                   type="number" name="edad_maxima" min="0" max="99"
+                                   value="<?= getOld('edad_maxima', 99) ?>">
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="campo" style="flex:1">
-                <label class="requerido">Fecha y hora de fin</label>
-                <input type="datetime-local" name="fecha_fin" required>
+
+            <!-- Fechas -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-6">
+                    <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Inicio <span class="text-error">*</span></label>
+                    <input type="datetime-local" name="fecha_inicio" required class="w-full h-12 px-4 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20"
+                           value="<?= getOld('fecha_inicio') ?>">
+                </div>
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-6">
+                    <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Fin <span class="text-error">*</span></label>
+                    <input type="datetime-local" name="fecha_fin" required class="w-full h-12 px-4 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20"
+                           value="<?= getOld('fecha_fin') ?>">
+                </div>
             </div>
-        </div>
 
-        <!-- Mapa ubicación -->
-        <div class="campo">
-            <label class="requerido">Ubicación de la actividad</label>
-            <div id="map"></div>
-            <button type="button" id="btnMiUbicacion" class="btn-geo">📍 Usar mi ubicación actual</button>
-            <div class="coord-info">
-                Latitud: <span id="latSpan">No seleccionada</span> | 
-                Longitud: <span id="lngSpan">No seleccionada</span>
-                <input type="hidden" name="latitud" id="latInput" required>
-                <input type="hidden" name="longitud" id="lngInput" required>
+            <!-- Mapa y ubicación -->
+            <div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-6">
+                <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Ubicación <span class="text-error">*</span></label>
+                <div id="map" class="h-64 w-full rounded-xl overflow-hidden border border-outline-variant/30 z-10"></div>
+                <div class="flex justify-end">
+                    <button type="button" id="btnMiUbicacion" class="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-xl text-sm font-medium hover:bg-primary/20 transition-all">
+                        <span class="material-symbols-outlined text-base">my_location</span> Usar mi ubicación
+                    </button>
+                </div>
+                <div class="text-sm text-on-surface-variant bg-surface-container-low p-3 rounded-lg">
+                    📍 Latitud: <span id="latSpan" class="font-mono">No seleccionada</span> | 
+                    Longitud: <span id="lngSpan" class="font-mono">No seleccionada</span>
+                </div>
+                <input type="hidden" name="latitud" id="latInput" required value="<?= getOld('latitud') ?>">
+                <input type="hidden" name="longitud" id="lngInput" required value="<?= getOld('longitud') ?>">
             </div>
-        </div>
 
-        <!-- Foto -->
-        <div class="campo">
-            <label>Foto de la actividad (JPG, PNG, WEBP, máx. 5MB)</label>
-            <input type="file" name="foto_actividad" accept="image/jpeg,image/png,image/webp">
-        </div>
+            <!-- Descripción y requisitos -->
+            <div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-8">
+                <div class="space-y-2">
+                    <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Descripción</label>
+                    <textarea class="w-full p-5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 resize-none" 
+                              name="descripcion" rows="4" placeholder="Describe qué haremos, materiales necesarios, etc."><?= getOld('descripcion') ?></textarea>
+                </div>
+                <div class="space-y-2">
+                    <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Requisitos (opcional)</label>
+                    <textarea class="w-full p-5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 resize-none" 
+                              name="requisitos" rows="3" placeholder="Ej: Ropa cómoda, conocimientos básicos, etc."><?= getOld('requisitos') ?></textarea>
+                </div>
+            </div>
 
-        <button type="submit">Crear actividad</button>
-        <a href="<?= BASE_URL ?>?c=dashboard" style="margin-left: 15px;">Cancelar</a>
-    </form>
+            <!-- Privacidad -->
+            <div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-6">
+                <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Privacidad</label>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 radio-card">
+                    <?php 
+                    $privacidad = getOld('privacidad', 'publica');
+                    ?>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="privacidad" value="publica" class="hidden peer" <?= $privacidad === 'publica' ? 'checked' : '' ?>>
+                        <div class="p-4 rounded-xl border-2 border-transparent bg-surface-container-low peer-checked:border-primary peer-checked:bg-primary/5 transition-all flex items-center gap-4">
+                            <span class="material-symbols-outlined text-primary">public</span>
+                            <div>
+                                <p class="font-bold text-on-surface text-sm">Pública</p>
+                                <p class="text-xs text-on-surface-variant">Cualquiera puede unirse</p>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="privacidad" value="por_aprobacion" class="hidden peer" <?= $privacidad === 'por_aprobacion' ? 'checked' : '' ?>>
+                        <div class="p-4 rounded-xl border-2 border-transparent bg-surface-container-low peer-checked:border-primary peer-checked:bg-primary/5 transition-all flex items-center gap-4">
+                            <span class="material-symbols-outlined text-primary">how_to_reg</span>
+                            <div>
+                                <p class="font-bold text-on-surface text-sm">Por aprobación</p>
+                                <p class="text-xs text-on-surface-variant">Organizador acepta</p>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="privacidad" value="privada" class="hidden peer" <?= $privacidad === 'privada' ? 'checked' : '' ?>>
+                        <div class="p-4 rounded-xl border-2 border-transparent bg-surface-container-low peer-checked:border-primary peer-checked:bg-primary/5 transition-all flex items-center gap-4">
+                            <span class="material-symbols-outlined text-primary">lock</span>
+                            <div>
+                                <p class="font-bold text-on-surface text-sm">Privada</p>
+                                <p class="text-xs text-on-surface-variant">Solo invitados</p>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Botones -->
+            <div class="flex flex-col md:flex-row items-center justify-end gap-4 mt-4">
+                <a href="<?= BASE_URL ?>?c=dashboard" class="w-full md:w-auto px-8 py-4 text-primary font-bold hover:bg-surface-container-low rounded-xl transition-all text-center">Cancelar</a>
+                <button type="submit" class="w-full md:w-auto px-10 py-4 bg-gradient-to-br from-primary to-primary-dim text-on-primary font-bold text-lg rounded-xl shadow-[0_8px_24px_rgba(98,54,255,0.3)] hover:scale-[1.02] active:scale-95 transition-all">Publicar actividad</button>
+            </div>
+        </form>
+    </div>
 </div>
 
-<script>
-    const defLat = 18.4500;
-    const defLng = -96.3500;
-    var map = L.map('map').setView([defLat, defLng], 13);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CartoDB'
-    }).addTo(map);
-    var marker = L.marker([defLat, defLng], { draggable: true }).addTo(map);
-    function actualizarCoordenadas(lat, lng) {
-        document.getElementById('latSpan').innerText = lat.toFixed(6);
-        document.getElementById('lngSpan').innerText = lng.toFixed(6);
-        document.getElementById('latInput').value = lat;
-        document.getElementById('lngInput').value = lng;
-    }
-    marker.on('dragend', function(e) {
-        var pos = marker.getLatLng();
-        actualizarCoordenadas(pos.lat, pos.lng);
-    });
-    map.on('click', function(e) {
-        marker.setLatLng(e.latlng);
-        actualizarCoordenadas(e.latlng.lat, e.latlng.lng);
-    });
-    document.getElementById('btnMiUbicacion').addEventListener('click', function() {
-        if (!navigator.geolocation) alert("Geolocalización no soportada");
-        else navigator.geolocation.getCurrentPosition(function(pos) {
-            var lat = pos.coords.latitude, lng = pos.coords.longitude;
-            map.setView([lat, lng], 15);
-            marker.setLatLng([lat, lng]);
-            actualizarCoordenadas(lat, lng);
-        }, function(err) { alert("Error obteniendo ubicación"); });
-    });
-    actualizarCoordenadas(defLat, defLng);
-</script>
-</body>
-</html>
+<!-- Scripts Leaflet y demás -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<?php include 'Scripts/crearS.php'; ?>
+<?php include 'includes/bottom-nav.php'; ?>
