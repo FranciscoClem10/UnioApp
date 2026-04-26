@@ -148,4 +148,35 @@
     document.querySelectorAll('.send-request-form').forEach(form => {
         form.addEventListener('submit', handleFormSubmit);
     });
+
+    // ========== CIERRE DEL MODAL ==========
+    const modal = document.getElementById('addFriendModal');
+    const closeModal = () => {
+        if (modal) {
+            modal.classList.add('opacity-0', 'invisible');
+            // Opcional: limpiar búsqueda al cerrar
+            const searchInput = document.getElementById('searchUserInput');
+            if (searchInput) searchInput.value = '';
+            const resultsDiv = document.getElementById('searchResults');
+            const emptyDiv = document.getElementById('searchEmpty');
+            if (resultsDiv) resultsDiv.classList.add('hidden');
+            if (emptyDiv) emptyDiv.classList.add('hidden');
+        }
+    };
+
+    // Botón X
+    const closeBtn = document.getElementById('closeModalBtn');
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+
+    // Botón Cancelar / Cerrar
+    const cancelBtn = document.getElementById('modalCancelBtn');
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+    // Clic fuera del contenido (backdrop)
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            // Solo cierra si se hizo click directamente en el fondo (el div con clase fixed inset-0)
+            if (e.target === modal) closeModal();
+        });
+    }
 </script>

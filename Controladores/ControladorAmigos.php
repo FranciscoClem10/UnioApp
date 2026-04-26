@@ -28,6 +28,8 @@ class ControladorAmigos {
         }
         $modelo = new ModeloUsuario();
         $id_user = $_SESSION['usuario_id'];
+        $modeloNotif = new ModeloNotificacion();
+        $modeloNotif->marcarLeidasPorTipos($_SESSION['usuario_id'], ['solicitud_amistad', 'amistad']);
 
         $amigos = $modelo->obtenerAmigos($id_user);
         $solicitudes = $modelo->obtenerSolicitudesPendientes($id_user);

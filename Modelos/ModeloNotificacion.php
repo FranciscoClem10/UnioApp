@@ -21,6 +21,15 @@ class ModeloNotificacion {
 
     }
 
+    public function marcarLeidasPorTipos($id_usuario, $tipos) {
+        if (empty($tipos)) return true;
+        $placeholders = implode(',', array_fill(0, count($tipos), '?'));
+        $sql = "UPDATE notificaciones SET leida = 1 
+                WHERE id_usuario = ? AND tipo IN ($placeholders) AND leida = 0";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute(array_merge([$id_usuario], $tipos));
+    }
+
     public function marcarLeidasPorContexto($id_usuario, $tipo, $referencia) {
         $sql = "UPDATE notificaciones SET leida = 1 
                 WHERE id_usuario = :id_user 
