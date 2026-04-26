@@ -95,7 +95,7 @@ $notificacionesNoLeidas = $modeloNotif->contarNoLeidas($_SESSION['usuario_id']);
     </aside>
 
     <!-- Botón flotante para móvil cuando sidebar está colapsado -->
-    <button class="fixed left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/80 backdrop-blur-md rounded-xl shadow-xl border border-outline-variant/30 flex items-center justify-center z-50 text-primary hover:bg-primary hover:text-on-primary transition-all active:scale-95 md:hidden" id="revealButton" onclick="toggleSidebar()">
+    <button class="fixed left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/80 backdrop-blur-md rounded-xl shadow-xl border border-outline-variant/30 flex items-center justify-center z-50 text-primary hover:bg-primary hover:text-on-primary transition-all active:scale-95" id="revealButton" onclick="toggleSidebar()">
         <span class="material-symbols-outlined text-2xl">chevron_right</span>
     </button>
 
