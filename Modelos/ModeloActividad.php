@@ -6,50 +6,62 @@ class ModeloActividad {
         $this->db = Database::getConexion();
     }
 
-    public function obtenerTodasVisibles($usuario_id) {
-        $sql = "SELECT a.id_actividad, a.nombre AS titulo, a.descripcion, a.requisitos, 
-                    a.edad_minima, a.limite_participantes_max AS limite_personas,
-                    a.latitud, a.longitud, a.privacidad AS tipo_acceso, a.estado,
-                    a.id_creador, ta.nombre_tipo AS categoria,
-                    a.fecha_inicio AS fecha_proxima,
-                    DATE_FORMAT(a.fecha_inicio, '%H:%i:%s') AS hora_proxima
-                FROM actividades a
-                INNER JOIN tipos_actividad ta ON a.id_tipo = ta.id_tipo
-                WHERE a.estado IN ('pendiente', 'en_curso')
-                AND a.privacidad != 'privada'
-                AND a.id_creador != :usuario_id
-                ORDER BY a.fecha_inicio ASC";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->bindParam(':usuario_id', $usuario_id, PDO::PARAM_INT);
-        $stmt->execute();
-
-        $actividades = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        foreach ($actividades as &$act) {
-            $act['fecha'] = $act['fecha_proxima'] 
-                ? date('Y-m-d', strtotime($act['fecha_proxima'])) 
-                : null;
-
-            $act['hora'] = $act['hora_proxima'] ?? null;
-
-            switch ($act['tipo_acceso']) {
-                case 'publica': 
-                    $act['tipo_acceso'] = 'todos'; 
-                    break;
-                case 'privada': 
-                    $act['tipo_acceso'] = 'invitacion'; 
-                    break;
-                case 'por_aprobacion': 
-                    $act['tipo_acceso'] = 'aprobado'; 
-                    break;
-                default: 
-                    $act['tipo_acceso'] = 'todos';
-            }
-        }
-
-        return $actividades;
+    public function obtenerTodasVisibles($usuario_id = null) {
+    // Si no se proporciona, intentar obtener de sesión
+    if ($usuario_id === null && isset($_SESSION['usuario_id'])) {
+        $usuario_id = $_SESSION['usuario_id'];
     }
+
+    $params = [];
+    $sql = "SELECT a.id_actividad, a.nombre AS titulo, a.descripcion, a.requisitos, 
+                   a.edad_minima, a.limite_participantes_max AS limite_personas,
+                   a.latitud, a.longitud, a.privacidad AS tipo_acceso, a.estado,
+                   a.id_creador, ta.nombre_tipo AS categoria,
+                   a.fecha_inicio AS fecha_proxima,
+                   DATE_FORMAT(a.fecha_inicio, '%%H:%%i:%%s') AS hora_proxima
+            FROM actividades a
+            INNER JOIN tipos_actividad ta ON a.id_tipo = ta.id_tipo
+            WHERE a.estado IN ('pendiente', 'en_curso')
+              AND a.privacidad != 'privada'";
+
+    if ($usuario_id) {
+        $sql .= " AND a.id_creador != :usuario_id";
+        $params[':usuario_id'] = $usuario_id;
+    }
+
+    // Aplicar filtro de bloqueo solo si hay usuario logueado
+    if ($usuario_id) {
+        $sql .= " AND NOT EXISTS (
+                      SELECT 1 FROM amistades bl
+                      WHERE bl.estado = 'bloqueado'
+                        AND bl.id_solicitante = :usuario_actual
+                        AND bl.id_receptor = a.id_creador
+                  )";
+        $params[':usuario_actual'] = $usuario_id;
+    }
+
+    $sql .= " ORDER BY a.fecha_inicio ASC";
+
+    $stmt = $this->db->prepare($sql);
+    $stmt->execute($params);
+    $actividades = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Procesar fechas y tipos de acceso (igual que antes)
+    foreach ($actividades as &$act) {
+        $act['fecha'] = $act['fecha_proxima'] ? date('Y-m-d', strtotime($act['fecha_proxima'])) : null;
+        $act['hora'] = $act['hora_proxima'] ?? null;
+
+        switch ($act['tipo_acceso']) {
+            case 'publica': $act['tipo_acceso'] = 'todos'; break;
+            case 'privada': $act['tipo_acceso'] = 'invitacion'; break;
+            case 'por_aprobacion': $act['tipo_acceso'] = 'aprobado'; break;
+            default: $act['tipo_acceso'] = 'todos';
+        }
+    }
+
+    return $actividades;
+}
+
     // Actividades creadas por el usuario
     public function obtenerPorCreador($usuario_id) {
         $sql = "SELECT a.id_actividad, a.nombre AS titulo, a.descripcion, a.requisitos, 
@@ -122,9 +134,6 @@ class ModeloActividad {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Crea una nueva actividad con fecha_inicio y fecha_fin
-     */
     public function crearActividad($datos, $foto_blob = null) {
         try {
             $this->db->beginTransaction();

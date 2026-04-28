@@ -64,11 +64,12 @@ $rechazados = $rechazados ?? [];
                 <div class="col-span-full text-center py-12 bg-surface-container-lowest rounded-2xl border border-dashed border-outline-variant">
                     <span class="material-symbols-outlined text-6xl text-outline mb-3">people_outline</span>
                     <p class="text-on-surface-variant mb-4">No tienes amigos agregados.</p>
-                    <a href="<?= BASE_URL ?>?c=amigos&a=agregar" 
-                    class="inline-flex items-center gap-2 px-5 py-2 bg-primary text-on-primary rounded-full hover:bg-primary-dark transition shadow-sm">
+                    
+                    <button id="fabAddFriendGlobal" class="inline-flex items-center gap-2 px-5 py-2 bg-primary text-on-primary rounded-full hover:bg-primary-dark transition shadow-sm">
                         <span class="material-symbols-outlined text-sm">person_add</span>
                         <span>Buscar amigos</span>
-                    </a>
+                    </button>
+
                 </div>
             <?php else: ?>
                 <?php foreach ($amigos as $amigo): ?>
