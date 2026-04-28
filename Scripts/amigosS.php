@@ -37,8 +37,6 @@
     tabRequests.addEventListener('click', activateRequests);
     tabRejected.addEventListener('click', activateRejected);
 
-    // El resto de funciones (búsqueda, AJAX, modal) se mantienen igual...
-    // Asegúrate de que el modal solo se abra en la pestaña amigos (opcional)
     const fab = document.getElementById('fabAddFriendGlobal');
     if (fab) {
         fab.addEventListener('click', () => {
@@ -65,24 +63,48 @@
         }
         searchEmptyDiv.classList.add('hidden');
         searchResultsDiv.classList.remove('hidden');
-        searchResultsDiv.innerHTML = users.map(user => `
-            <div class="flex items-center justify-between p-3 bg-surface-container-low rounded-xl border border-primary/20">
-                <div class="flex gap-3 items-center">
-                    ${user.foto_base64 ? `<img src="${user.foto_base64}" class="w-10 h-10 rounded-full object-cover">` : '<div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-xs">Sin foto</div>'}
+        
+        searchResultsDiv.innerHTML = users.map(user => {
+            let actionHtml = '';
+            
+            if (user.relacion === 'amigo') {
+                actionHtml = '<span class="text-green-600 text-sm font-medium">✓ Ya son amigos</span>';
+            } 
+            else if (user.relacion === 'solicitud_enviada') {
+                actionHtml = '<span class="text-yellow-600 text-sm font-medium">⏳ Solicitud enviada</span>';
+            } 
+            else if (user.relacion === 'solicitud_recibida') {
+                // Puedes mostrar solo un texto o un botón para aceptar (requiere endpoint)
+                actionHtml = '<span class="text-blue-600 text-sm font-medium">📩 Solicitud recibida (ve a la pestaña Solicitudes)</span>';
+            } 
+            else { // 'ninguna'
+                actionHtml = `
+                    <form action="<?= BASE_URL ?>?c=amigos&a=enviarSolicitud" method="POST" class="send-request-form">
+                        <input type="hidden" name="id" value="${user.id_usuario}">
+                        <button type="submit" class="bg-primary/10 text-primary hover:bg-primary/25 text-sm font-bold py-1.5 px-3 rounded-xl transition">
+                            Enviar solicitud
+                        </button>
+                    </form>
+                `;
+            }
+            
+            return `
+                <div class="flex items-center justify-between p-3 bg-surface-container-low rounded-xl border border-primary/20">
+                    <div class="flex gap-3 items-center">
+                        ${user.foto_base64 ? `<img src="${user.foto_base64}" class="w-10 h-10 rounded-full object-cover">` : '<div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-xs">Sin foto</div>'}
+                        <div>
+                            <p class="font-semibold text-sm">${escapeHtml(user.nombre_completo)}</p>
+                            <p class="text-xs text-outline">${escapeHtml(user.email)}</p>
+                        </div>
+                    </div>
                     <div>
-                        <p class="font-semibold text-sm">${escapeHtml(user.nombre_completo)}</p>
-                        <p class="text-xs text-outline">${escapeHtml(user.email)}</p>
+                        ${actionHtml}
                     </div>
                 </div>
-                <form action="<?= BASE_URL ?>?c=amigos&a=enviarSolicitud" method="POST" class="send-request-form">
-                    <input type="hidden" name="id" value="${user.id_usuario}">
-                    <button type="submit" class="bg-primary/10 text-primary hover:bg-primary/25 text-sm font-bold py-1.5 px-3 rounded-xl transition">
-                        Enviar solicitud
-                    </button>
-                </form>
-            </div>
-        `).join('');
+            `;
+        }).join('');
         
+        // Solo volver a enlazar los formularios de envío (los que tienen clase send-request-form)
         document.querySelectorAll('.send-request-form').forEach(form => {
             form.removeEventListener('submit', handleFormSubmit);
             form.addEventListener('submit', handleFormSubmit);

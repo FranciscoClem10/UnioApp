@@ -35,6 +35,7 @@ class ControladorAmigos {
         $solicitudes = $modelo->obtenerSolicitudesPendientes($id_user);
         $sugerencias = $modelo->obtenerUsuugeridos($id_user, 15);
         $rechazados = $modelo->obtenerRechazados($id_user);
+        $bloqueados = $modelo->obtenerBloqueados($id_user);
 
         require_once __DIR__ . '/../Vistas/Amigos/index.php';
     }
@@ -76,6 +77,27 @@ class ControladorAmigos {
             $_SESSION['mensaje_amigos'] = "Usuario bloqueado.";
         } else {
             $_SESSION['error_amigos'] = "Error al bloquear.";
+        }
+        header('Location: ' . BASE_URL . '?c=amigos');
+        exit;
+    }
+
+    public function desbloquear() {
+        if (!isset($_SESSION['usuario_id'])) {
+            header('Location: ' . BASE_URL . '?c=login');
+            exit;
+        }
+        $id_bloqueado = (int)($_POST['id'] ?? $_GET['id'] ?? 0);
+        if ($id_bloqueado <= 0) {
+            $_SESSION['error_amigos'] = "ID inválido.";
+            header('Location: ' . BASE_URL . '?c=amigos');
+            exit;
+        }
+        $modelo = new ModeloUsuario();
+        if ($modelo->desbloquearUsuario($_SESSION['usuario_id'], $id_bloqueado)) {
+            $_SESSION['mensaje_amigos'] = "Usuario desbloqueado. Ahora puedes enviarle solicitud.";
+        } else {
+            $_SESSION['error_amigos'] = "Error al desbloquear.";
         }
         header('Location: ' . BASE_URL . '?c=amigos');
         exit;
@@ -207,7 +229,7 @@ class ControladorAmigos {
         require_once 'Vistas/Amigos/verPerfil.php';
     }
 
-        public function buscarUsuariosJson() {
+    public function buscarUsuariosJson() {
         // Deshabilitar vistas de errores que puedan romper el JSON
         error_reporting(0);
         ini_set('display_errors', 0);
@@ -219,18 +241,27 @@ class ControladorAmigos {
                 exit;
             }
 
+            $id_actual = $_SESSION['usuario_id'];
             $termino = trim($_GET['q'] ?? '');
             if (strlen($termino) < 2) {
                 echo json_encode([]);
                 exit;
             }
 
-            $modelo = new ModeloUsuario();
             $db = Database::getConexion();
 
+            // Consulta que incluye la relación de amistad/solicitud
             $sql = "SELECT u.id_usuario, u.nombre, u.apellido_paterno, u.apellido_materno, u.email, u.foto_perfil,
-                        CONCAT(u.nombre, ' ', u.apellido_paterno, ' ', u.apellido_materno) AS nombre_completo
+                        CONCAT(u.nombre, ' ', u.apellido_paterno, ' ', u.apellido_materno) AS nombre_completo,
+                        CASE 
+                            WHEN a.estado = 'aceptado' THEN 'amigo'
+                            WHEN a.estado = 'pendiente' AND a.id_solicitante = :id_actual THEN 'solicitud_enviada'
+                            WHEN a.estado = 'pendiente' AND a.id_receptor = :id_actual THEN 'solicitud_recibida'
+                            ELSE 'ninguna'
+                        END AS relacion
                     FROM usuarios u
+                    LEFT JOIN amistades a ON (a.id_solicitante = u.id_usuario AND a.id_receptor = :id_actual)
+                                        OR (a.id_solicitante = :id_actual AND a.id_receptor = u.id_usuario)
                     WHERE u.activo = 1
                     AND u.id_usuario != :id_actual
                     AND ( u.nombre LIKE :term 
@@ -238,16 +269,25 @@ class ControladorAmigos {
                             OR u.apellido_materno LIKE :term 
                             OR u.email LIKE :term 
                             OR CONCAT(u.nombre, ' ', u.apellido_paterno, ' ', u.apellido_materno) LIKE :term )
+                    AND NOT EXISTS (
+                        SELECT 1 FROM amistades b
+                        WHERE b.estado = 'bloqueado'
+                            AND (
+                                (b.id_solicitante = :id_actual AND b.id_receptor = u.id_usuario)
+                                OR (b.id_solicitante = u.id_usuario AND b.id_receptor = :id_actual)
+                            )
+                    )
                     LIMIT 15";
 
             $stmt = $db->prepare($sql);
             $termParam = "%$termino%";
-            $stmt->bindParam(':id_actual', $_SESSION['usuario_id'], PDO::PARAM_INT);
+            $stmt->bindParam(':id_actual', $id_actual, PDO::PARAM_INT);
             $stmt->bindParam(':term', $termParam);
             $stmt->execute();
             $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             foreach ($usuarios as &$u) {
+                // Procesar foto a base64
                 if (!empty($u['foto_perfil'])) {
                     $finfo = finfo_open(FILEINFO_MIME_TYPE);
                     $mime = finfo_buffer($finfo, $u['foto_perfil']);
@@ -256,7 +296,10 @@ class ControladorAmigos {
                 } else {
                     $u['foto_base64'] = null;
                 }
-                unset($u['foto_perfil']); // no mandarlo al frontend por peso
+                unset($u['foto_perfil']); // no mandar el blob al frontend
+
+                // (Opcional) Agregar un flag booleano para saber si se puede enviar solicitud
+                $u['puede_enviar_solicitud'] = ($u['relacion'] == 'ninguna');
             }
 
             echo json_encode($usuarios);

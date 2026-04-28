@@ -137,7 +137,7 @@ class ModeloUsuario {
         return $amigos;
     }
 
-    // Buscar usuarios por nombre, apellidos o email, incluyendo relación de amistad
+     // Buscar usuarios por nombre, apellidos o email, excluyendo bloqueados
     public function buscarUsuariosConRelacion($id_usuario, $termino) {
         $sql = "SELECT u.id_usuario, u.nombre, u.apellido_paterno, u.apellido_materno, u.email, u.foto_perfil, u.latitud, u.longitud
                 FROM usuarios u
@@ -148,6 +148,14 @@ class ModeloUsuario {
                        OR u.apellido_materno LIKE :termino 
                        OR u.email LIKE :termino 
                        OR CONCAT(u.nombre, ' ', u.apellido_paterno, ' ', u.apellido_materno) LIKE :termino)
+                  AND NOT EXISTS (
+                      SELECT 1 FROM amistades a
+                      WHERE a.estado = 'bloqueado'
+                      AND (
+                          (a.id_solicitante = :id_actual AND a.id_receptor = u.id_usuario)
+                          OR (a.id_solicitante = u.id_usuario AND a.id_receptor = :id_actual)
+                      )
+                  )
                 LIMIT 30";
         $stmt = $this->db->prepare($sql);
         $terminoParam = "%$termino%";
@@ -199,12 +207,20 @@ class ModeloUsuario {
         return $stmt->execute([':s' => $id_solicitante, ':r' => $id_receptor]);
     }
 
-    // Obtener solicitudes pendientes (recibidas)
+    // Obtener solicitudes pendientes (recibidas), excluyendo si el solicitante está bloqueado
     public function obtenerSolicitudesPendientes($id_usuario) {
         $sql = "SELECT a.*, u.nombre, u.apellido_paterno, u.apellido_materno, u.foto_perfil
                 FROM amistades a
                 INNER JOIN usuarios u ON a.id_solicitante = u.id_usuario
                 WHERE a.id_receptor = :id AND a.estado = 'pendiente'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM amistades b
+                      WHERE b.estado = 'bloqueado'
+                      AND (
+                          (b.id_solicitante = :id AND b.id_receptor = u.id_usuario)
+                          OR (b.id_solicitante = u.id_usuario AND b.id_receptor = :id)
+                      )
+                  )
                 ORDER BY a.fecha_solicitud DESC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':id' => $id_usuario]);
@@ -236,18 +252,25 @@ class ModeloUsuario {
         return $stmt->execute([':id' => $id_usuario]);
     }
 
-    // Obtener todos los usuarios activos excepto uno dado
+    // Obtener todos los usuarios activos excepto uno dado, excluyendo bloqueados
     public function obtenerTodosExcepto($id_usuario) {
         $sql = "SELECT id_usuario, nombre, apellido_paterno, apellido_materno, email, foto_perfil 
                 FROM usuarios 
                 WHERE activo = 1 AND id_usuario != :id 
+                  AND NOT EXISTS (
+                      SELECT 1 FROM amistades a
+                      WHERE a.estado = 'bloqueado'
+                      AND (
+                          (a.id_solicitante = :id AND a.id_receptor = usuarios.id_usuario)
+                          OR (a.id_solicitante = usuarios.id_usuario AND a.id_receptor = :id)
+                      )
+                  )
                 ORDER BY nombre";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':id' => $id_usuario]);
         $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
         foreach ($usuarios as &$u) {
             $u['nombre_completo'] = trim($u['nombre'] . ' ' . $u['apellido_paterno'] . ' ' . $u['apellido_materno']);
-            // Si queremos mostrar foto en base64 en el dashboard, podemos procesar aquí
             if (!empty($u['foto_perfil'])) {
                 $finfo = finfo_open(FILEINFO_MIME_TYPE);
                 $mime = finfo_buffer($finfo, $u['foto_perfil']);
@@ -331,37 +354,61 @@ class ModeloUsuario {
     }
 
     public function bloquearUsuario($id_usuario, $id_bloquear) {
-        // Verificar si ya existe relación
-        $sqlCheck = "SELECT estado FROM amistades 
-                    WHERE (id_solicitante = :s1 AND id_receptor = :r1)
-                        OR (id_solicitante = :s2 AND id_receptor = :r2)";
-        $stmt = $this->db->prepare($sqlCheck);
-        $stmt->execute([
-            ':s1' => $id_usuario, ':r1' => $id_bloquear,
-            ':s2' => $id_bloquear, ':r2' => $id_usuario
-        ]);
-        $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($id_usuario == $id_bloquear) return false;
+
+        // 1. Eliminar cualquier relación existente (amistad, solicitud, rechazo) entre ambos
+        $sqlDelete = "DELETE FROM amistades 
+                    WHERE (id_solicitante = :s AND id_receptor = :r)
+                        OR (id_solicitante = :r AND id_receptor = :s)";
+        $stmtDel = $this->db->prepare($sqlDelete);
+        $stmtDel->execute([':s' => $id_usuario, ':r' => $id_bloquear]);
+
+        // 2. Insertar el bloqueo con la dirección correcta (quien bloquea es id_solicitante)
+        $sqlInsert = "INSERT INTO amistades (id_solicitante, id_receptor, estado, fecha_respuesta)
+                    VALUES (:s, :r, 'bloqueado', NOW())";
+        $stmtIns = $this->db->prepare($sqlInsert);
+        return $stmtIns->execute([':s' => $id_usuario, ':r' => $id_bloquear]);
+    }
+
+
+    // Obtener usuarios bloqueados por el usuario actual (solo donde él es el solicitante)
+    public function obtenerBloqueados($id_usuario) {
+        $sql = "SELECT u.id_usuario, u.nombre, u.apellido_paterno, u.apellido_materno, u.email, u.foto_perfil,
+                    CONCAT(u.nombre, ' ', u.apellido_paterno, ' ', u.apellido_materno) AS nombre_completo,
+                    a.fecha_respuesta
+                FROM amistades a
+                INNER JOIN usuarios u ON a.id_receptor = u.id_usuario
+                WHERE a.id_solicitante = :id_usuario
+                AND a.estado = 'bloqueado'
+                ORDER BY a.fecha_respuesta DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id_usuario' => $id_usuario]);
+        $bloqueados = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        if ($existing) {
-            // Actualizar a bloqueado
-            $sqlUpdate = "UPDATE amistades SET estado = 'bloqueado', fecha_respuesta = NOW()
-                        WHERE (id_solicitante = :s1 AND id_receptor = :r1)
-                            OR (id_solicitante = :s2 AND id_receptor = :r2)";
-            $stmtUp = $this->db->prepare($sqlUpdate);
-            return $stmtUp->execute([
-                ':s1' => $id_usuario, ':r1' => $id_bloquear,
-                ':s2' => $id_bloquear, ':r2' => $id_usuario
-            ]);
-        } else {
-            // Crear nuevo registro bloqueado
-            $sqlInsert = "INSERT INTO amistades (id_solicitante, id_receptor, estado, fecha_respuesta)
-                        VALUES (:s, :r, 'bloqueado', NOW())";
-            $stmtIn = $this->db->prepare($sqlInsert);
-            return $stmtIn->execute([
-                ':s' => $id_usuario,
-                ':r' => $id_bloquear
-            ]);
+        foreach ($bloqueados as &$u) {
+            if (!empty($u['foto_perfil'])) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_buffer($finfo, $u['foto_perfil']);
+                finfo_close($finfo);
+                $u['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($u['foto_perfil']);
+            } else {
+                $u['foto_base64'] = null;
+            }
         }
+        return $bloqueados;
+    }
+
+    // Desbloquear un usuario (solo si el usuario actual es quien lo bloqueó)
+    public function desbloquearUsuario($id_usuario, $id_bloqueado) {
+        $sql = "DELETE FROM amistades 
+                WHERE id_solicitante = :id_usuario
+                AND id_receptor = :id_bloqueado
+                AND estado = 'bloqueado'";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            ':id_usuario' => $id_usuario,
+            ':id_bloqueado' => $id_bloqueado
+        ]);
     }
 }
 ?>
