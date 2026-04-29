@@ -33,8 +33,10 @@ $notificacionesNoLeidas = $modeloNotif->contarNoLeidas($_SESSION['usuario_id']);
         <div class="flex flex-col space-y-6 flex-1 min-w-[260px]">
             <!-- Cabecera -->
             <div>
-                <h1 class="text-[1.75rem] font-bold text-on-surface">Mi Comunidad</h1>
-                <p class="text-on-surface-variant text-sm">Explora y Conecta</p>
+                <h1 class="text-[2.5rem] font-extrabold tracking-tight text-on-surface leading-tight mb-4"> Mapa de 
+                    <span class="text-primary">Actividades</span>
+                </h1>
+                <p class="text-on-surface-variant max-w-xl">Descubre nuevas experiencias dentro de Unio.</p>
             </div>
 
             <!-- Estadísticas rápidas -->

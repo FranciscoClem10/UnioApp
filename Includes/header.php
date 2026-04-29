@@ -1,23 +1,54 @@
-<?php
+<?php 
 if (session_status() === PHP_SESSION_NONE) session_start();
+
 if (!isset($_SESSION['usuario_id'])) {
     header('Location: ' . BASE_URL . '?c=login');
     exit;
 }
+
+$controller = $_GET['c'] ?? '';
+$action = $_GET['a'] ?? '';
+
+
+// TÍTULO
+$titulo = 'Unio';
+
+if ($controller === 'dashboard') {
+    $titulo = 'Unio | Explorar';
+} elseif ($controller === 'actividad' && $action === 'crear') {
+    $titulo = 'Unio | Crear actividad';
+} elseif ($controller === 'actividad' && $action === 'editar') {
+    $titulo = 'Unio | Editar Actividad';
+} elseif ($controller === 'mensajes') {
+    $titulo = 'Unio | Mensajes';
+} elseif ($controller === 'perfil' && $action === 'index') {
+    $titulo = 'Unio | Mi perfil';
+} elseif ($controller === 'perfil' && $action === 'ajustes') {
+    $titulo = 'Unio | Ajustes';
+} elseif ($controller === 'amigos') {
+    $titulo = 'Unio | Conexiones';
+} elseif ($controller === 'notificacion') {
+    $titulo = 'Unio | Notificaciones';
+}
+
 ?>
+
 <!DOCTYPE html>
 <html class="light" lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>UnioApp</title>
+    
+    <title><?= htmlspecialchars($titulo) ?></title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <!-- Material Symbols -->
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     
     <script>
         tailwind.config = {
@@ -43,23 +74,57 @@ if (!isset($_SESSION['usuario_id'])) {
                         "surface": "#f6f6f6", "on-secondary-fixed": "#431783", "inverse-primary": "#927dff",
                         "surface-container-highest": "#dbdddd", "surface-dim": "#d3d5d5", "primary-container": "#a292ff"
                     },
-                    fontFamily: { "headline": ["Plus Jakarta Sans"], "body": ["Plus Jakarta Sans"], "label": ["Plus Jakarta Sans"] },
-                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                    fontFamily: {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Plus Jakarta Sans"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
                 },
             },
         }
     </script>
     
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f6f6f6; }
-        .glass-nav { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px); }
-        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #e7e8e8; border-radius: 10px; }
-        textarea { scrollbar-width: thin; }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f6f6f6;
+        }
+
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #e7e8e8;
+            border-radius: 10px;
+        }
+
+        textarea {
+            scrollbar-width: thin;
+        }
     </style>
 </head>
+
 <body class="text-on-surface bg-background overflow-hidden h-screen flex flex-col">
-    <!-- Contenido principal: ocupa todo el espacio restante -->
+
+    <!-- CONTENIDO PRINCIPAL -->
     <main class="flex-1 pt-16 flex flex-col overflow-hidden pb-20 md:pb-0">

@@ -11,7 +11,9 @@ require_once __DIR__ . '/../../includes/top-nav.php';
 <main class="flex flex-col h-[calc(100dvh-64px-56px)] overflow-hidden max-w-4xl mx-auto w-full">
 <br>
 <div class="mb-6 text-center md:text-left">
-    <h1 class="text-[2.5rem] md:text-[3.5rem] font-extrabold tracking-tight leading-tight text-on-surface mb-2 font-headline">Conversaciones</h1>
+    <h1 class="text-[3.5rem] font-extrabold tracking-tight text-on-surface leading-tight mb-4">
+        <span class="text-primary">Mensajes</span>
+    </h1>
     <p class="text-on-surface-variant max-w-xl">Conecta con tu comunidad, comparte ideas y haz que cada mensaje cuente.</p>
 </div>
     <div class="flex flex-col flex-1 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm border border-surface-container-low overflow-hidden">

@@ -22,7 +22,10 @@ $rechazados = $rechazados ?? [];
 
     <!-- Cabecera de la página -->
     <div class="mb-6">
-        <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight">Mis Conexiones</h1>
+        <h1 class="text-[3.5rem] font-extrabold tracking-tight text-on-surface leading-tight mb-4">
+                Mis
+                <span class="text-primary">Conexiones</span>
+            </h1>
         <p class="text-on-surface-variant text-base mt-1">Gestiona las personas que has conocido en la red UNIO</p>
     </div>
 

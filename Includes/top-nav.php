@@ -8,29 +8,24 @@ $action = $_GET['a'] ?? '';
 
 if ($controller === 'dashboard') {
     $seccion_activa = 'explorar';
-} elseif ($controller === 'actividad') {
-    $seccion_activa = 'crear';  // o 'actividad', según prefieras
+} elseif ($controller === 'actividad' && $action === 'crear') {
+    $seccion_activa = 'crear';  
 } elseif ($controller === 'mensajes') {
     $seccion_activa = 'mensajes';
-} elseif ($controller === 'actividad' && $action === 'edicion') {
-    $seccion_usuario = 'actividad';
 } elseif ($controller === 'amigos') {
-    // No hay botón directo en top-nav, pero lo dejamos por si acaso
     $seccion_activa = '';
 }
-// Determinar sección activa para el menú desplegable del usuario
+// Determinar sección activa para el menú desplegable del usuario (ya no incluye notificaciones/ajustes)
 $seccion_usuario = '';
 if ($controller === 'perfil' && $action === 'index') {
     $seccion_usuario = 'perfil';
-} elseif ($controller === 'notificacion') {
-    $seccion_usuario = 'notificaciones';
-} elseif ($controller === 'perfil' && $action === 'ajustes') {
-    $seccion_usuario = 'ajustes';
 } elseif ($controller === 'amigos') {
     $seccion_usuario = 'amigos';
+} elseif ($controller === 'actividad' && $action === 'edicion') {
+    $seccion_usuario = 'actividad';
 }
 
-// Contador de notificaciones (mejor con try/catch)
+// Contador de notificaciones
 $notificacionesNoLeidas = 0;
 if (class_exists('ModeloNotificacion')) {
     try {
@@ -61,36 +56,45 @@ if (class_exists('ModeloNotificacion')) {
         </nav>
     </div>
 
-    <div class="relative group">
-        <button class="flex items-center gap-2 px-3 py-2 rounded-full hover:bg-surface-container-high transition-colors">
-            <span class="material-symbols-outlined">person</span>
-            <span class="text-sm font-medium hidden sm:inline"><?= htmlspecialchars($_SESSION['usuario_nombre'] ?? $_SESSION['nombre'] ?? 'Usuario') ?></span>
-        </button>
-        <div class="absolute right-0 top-full mt-2 w-56 bg-white/90 backdrop-blur-xl border border-outline-variant/10 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[60] py-2">
-            <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors <?= $seccion_usuario === 'perfil' ? 'bg-primary/5 text-primary' : 'text-on-surface hover:bg-primary/5 hover:text-primary' ?>" 
-            href="<?= BASE_URL ?>?c=perfil&a=index">
-                <span class="material-symbols-outlined">person</span> Mi perfil
-            </a>
-            <a href="<?= BASE_URL ?>?c=notificacion" class="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors <?= $seccion_usuario === 'notificaciones' ? 'bg-primary/5 text-primary' : 'text-on-surface hover:bg-primary/5 hover:text-primary' ?>">
-                <span class="material-symbols-outlined">notifications</span> Notificaciones
-                <?php if ($notificacionesNoLeidas > 0): ?>
-                    <span class="ml-auto bg-error text-white text-xs rounded-full px-2 py-0.5"><?= $notificacionesNoLeidas ?></span>
-                <?php endif; ?>
-            </a>
-            <a href="<?= BASE_URL ?>?c=perfil&a=ajustes" class="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors <?= $seccion_usuario === 'ajustes' ? 'bg-primary/5 text-primary' : 'text-on-surface hover:bg-primary/5 hover:text-primary' ?>">
-                <span class="material-symbols-outlined">settings</span> Ajustes
-            </a>
-            <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors <?= $seccion_usuario === 'amigos' ? 'bg-primary/5 text-primary' : 'text-on-surface hover:bg-primary/5 hover:text-primary' ?>" 
-            href="<?= BASE_URL ?>?c=amigos&a=index">
-                <span class="material-symbols-outlined">group</span> Mis Conexiones
-            </a>
-            <a href="<?= BASE_URL ?>?c=actividad&a=edicion" 
-                class="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors <?= $seccion_usuario === 'actividad' ? 'bg-primary/5 text-primary' : 'text-on-surface hover:bg-primary/5 hover:text-primary' ?>">
-                <span class="material-symbols-outlined">history</span> Mis actividades
-            </a>
-            <a href="<?= BASE_URL ?>?c=login&a=logout" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-100 transition-colors cursor-pointer">
-                <span class="material-symbols-outlined">logout</span> Cerrar sesión
-            </a> 
+    <div class="flex items-center gap-2">
+        <!-- Notificaciones (fuera del menú flotante) -->
+        <a href="<?= BASE_URL ?>?c=notificacion" 
+           class="relative p-2 rounded-full transition-colors hover:bg-surface-container-high <?= $controller === 'notificacion' ? 'text-primary' : 'text-slate-600' ?>">
+            <span class="material-symbols-outlined">notifications</span>
+            <?php if ($notificacionesNoLeidas > 0): ?>
+                <span class="absolute -top-0.5 -right-0.5 bg-error text-white text-xs rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1"><?= $notificacionesNoLeidas ?></span>
+            <?php endif; ?>
+        </a>
+
+        <!-- Ajustes (fuera del menú flotante) -->
+        <a href="<?= BASE_URL ?>?c=perfil&a=ajustes"
+           class="p-2 rounded-full transition-colors hover:bg-surface-container-high <?= ($controller === 'perfil' && $action === 'ajustes') ? 'text-primary' : 'text-slate-600' ?>">
+            <span class="material-symbols-outlined">settings</span>
+        </a>
+
+        <!-- Botón que abre el menú flotante (perfil, conexiones, etc.) -->
+        <div class="relative group">
+            <button class="flex items-center gap-2 px-3 py-2 rounded-full hover:bg-surface-container-high transition-colors">
+                <span class="material-symbols-outlined">person</span>
+                <span class="text-sm font-medium hidden sm:inline"><?= htmlspecialchars($_SESSION['usuario_nombre'] ?? $_SESSION['nombre'] ?? 'Usuario') ?></span>
+            </button>
+            <div class="absolute right-0 top-full mt-2 w-56 bg-white/90 backdrop-blur-xl border border-outline-variant/10 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[60] py-2">
+                <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors <?= $seccion_usuario === 'perfil' ? 'bg-primary/5 text-primary' : 'text-on-surface hover:bg-primary/5 hover:text-primary' ?>" 
+                href="<?= BASE_URL ?>?c=perfil&a=index">
+                    <span class="material-symbols-outlined">person</span> Mi perfil
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors <?= $seccion_usuario === 'amigos' ? 'bg-primary/5 text-primary' : 'text-on-surface hover:bg-primary/5 hover:text-primary' ?>" 
+                href="<?= BASE_URL ?>?c=amigos&a=index">
+                    <span class="material-symbols-outlined">group</span> Mis Conexiones
+                </a>
+                <a href="<?= BASE_URL ?>?c=actividad&a=edicion" 
+                    class="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors <?= $seccion_usuario === 'actividad' ? 'bg-primary/5 text-primary' : 'text-on-surface hover:bg-primary/5 hover:text-primary' ?>">
+                    <span class="material-symbols-outlined">event_note</span> Actividades
+                </a>
+                <a href="<?= BASE_URL ?>?c=login&a=logout" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-100 transition-colors cursor-pointer">
+                    <span class="material-symbols-outlined">logout</span> Cerrar sesión
+                </a> 
+            </div>
         </div>
     </div>
 </header>
