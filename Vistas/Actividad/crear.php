@@ -149,10 +149,7 @@ function getOld($field, $default = '') {
                         <span class="material-symbols-outlined text-base">my_location</span> Usar mi ubicación
                     </button>
                 </div>
-                <div class="text-sm text-on-surface-variant bg-surface-container-low p-3 rounded-lg">
-                    📍 Latitud: <span id="latSpan" class="font-mono">No seleccionada</span> | 
-                    Longitud: <span id="lngSpan" class="font-mono">No seleccionada</span>
-                </div>
+                <div id="direccionMostrada" class="text-sm text-on-surface-variant bg-surface-container-low p-3 rounded-lg">No seleccionada</div>
                 <input type="hidden" name="latitud" id="latInput" required value="<?= getOld('latitud') ?>">
                 <input type="hidden" name="longitud" id="lngInput" required value="<?= getOld('longitud') ?>">
             </div>
@@ -162,7 +159,7 @@ function getOld($field, $default = '') {
                 <div class="space-y-2">
                     <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Descripción</label>
                     <textarea class="w-full p-5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 resize-none" 
-                              name="descripcion" rows="4" placeholder="Describe qué haremos, materiales necesarios, etc."><?= getOld('descripcion') ?></textarea>
+                              name="descripcion" rows="4" placeholder="Describe qué haremos."><?= getOld('descripcion') ?></textarea>
                 </div>
                 <div class="space-y-2">
                     <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Requisitos (opcional)</label>

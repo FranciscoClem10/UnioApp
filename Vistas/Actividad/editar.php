@@ -4,263 +4,316 @@ if (!isset($_SESSION['usuario_id'])) {
     header('Location: ' . BASE_URL . '?c=login');
     exit;
 }
-// Variables disponibles: $actividad, $tipos, $organizadores, $solicitudes, $participantes, $invitaciones, $restricciones
+// Variables disponibles desde el controlador:
+// $actividad, $tipos, $organizadores, $solicitudes, $participantes, $invitaciones, $restricciones
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Editar actividad - <?= htmlspecialchars($actividad['nombre']) ?></title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <style>
-        body { font-family: Arial; background: #f4f4f4; margin: 0; padding: 20px; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; }
-        .campo { margin-bottom: 15px; }
-        label { font-weight: bold; display: block; margin-bottom: 5px; }
-        input, select, textarea { width: 100%; padding: 8px; box-sizing: border-box; }
-        #map { height: 300px; margin-top: 10px; border: 1px solid #ccc; border-radius: 5px; }
-        .btn { background: #007bff; color: white; padding: 5px 10px; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
-        .btn-danger { background: #dc3545; }
-        .btn-success { background: #28a745; }
-        .seccion { margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; }
-        .lista-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding: 8px 0; }
-        .error { color: red; }
-        .exito { color: green; }
-        .bloqueado { background: #e9ecef; color: #6c757d; cursor: not-allowed; }
-        .buscar-usuario { display: flex; gap: 10px; margin-bottom: 10px; }
-        .resultado-busqueda { cursor: pointer; padding: 5px; border-bottom: 1px solid #eee; }
-        .resultado-busqueda:hover { background: #f0f0f0; }
-    </style>
-</head>
-<body>
-<div class="container">
-    <h2>Editar actividad: <?= htmlspecialchars($actividad['nombre']) ?></h2>
-    <a href="<?= BASE_URL ?>?c=actividad&a=edicion">← Volver a mis actividades</a>
+<?php include 'includes/header.php'; ?>
+<?php include 'includes/top-nav.php'; ?>
 
-    <?php if (isset($_SESSION['error_edicion'])): ?>
-        <div class="error"><?= htmlspecialchars($_SESSION['error_edicion']) ?></div>
-        <?php unset($_SESSION['error_edicion']); ?>
-    <?php endif; ?>
-    <?php if (isset($_SESSION['exito_edicion'])): ?>
-        <div class="exito"><?= htmlspecialchars($_SESSION['exito_edicion']) ?></div>
-        <?php unset($_SESSION['exito_edicion']); ?>
-    <?php endif; ?>
+<div class="overflow-y-auto flex-1 w-full px-4 md:px-8 pb-24">
+    <div class="max-w-4xl mx-auto pt-6">
+        <!-- Mensajes de éxito/error -->
+        <?php if (isset($_SESSION['error_edicion'])): ?>
+            <div class="mb-6 p-4 rounded-xl bg-error-container/20 border-l-4 border-error text-on-error-container text-sm font-medium">
+                <?= htmlspecialchars($_SESSION['error_edicion']) ?>
+                <?php unset($_SESSION['error_edicion']); ?>
+            </div>
+        <?php endif; ?>
+        <?php if (isset($_SESSION['exito_edicion'])): ?>
+            <div class="mb-6 p-4 rounded-xl bg-green-100 border-l-4 border-green-500 text-green-800 text-sm font-medium">
+                <?= htmlspecialchars($_SESSION['exito_edicion']) ?>
+                <?php unset($_SESSION['exito_edicion']); ?>
+            </div>
+        <?php endif; ?>
 
-    <?php if ($restricciones['bloquear_todo']): ?>
-        <div class="error">Esta actividad está <?= $actividad['estado'] ?> y no se puede editar.</div>
-    <?php else: ?>
-        <!-- Formulario de edición de datos básicos -->
-        <form action="<?= BASE_URL ?>?c=actividad&a=actualizar" method="POST" enctype="multipart/form-data">
-            <input type="hidden" name="id_actividad" value="<?= $actividad['id_actividad'] ?>">
-            <div class="campo">
-                <label>Nombre</label>
-                <input type="text" name="nombre" value="<?= htmlspecialchars($actividad['nombre']) ?>" required>
-            </div>
-            <div class="campo">
-                <label>Tipo de actividad</label>
-                <select name="id_tipo" required>
-                    <?php foreach ($tipos as $tipo): ?>
-                        <option value="<?= $tipo['id_tipo'] ?>" <?= $tipo['id_tipo'] == $actividad['id_tipo'] ? 'selected' : '' ?>><?= htmlspecialchars($tipo['nombre_tipo']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="campo">
-                <label>Descripción</label>
-                <textarea name="descripcion" rows="4"><?= htmlspecialchars($actividad['descripcion']) ?></textarea>
-            </div>
-            <div class="campo">
-                <label>Requisitos</label>
-                <textarea name="requisitos" rows="3"><?= htmlspecialchars($actividad['requisitos']) ?></textarea>
-            </div>
-            <div style="display: flex; gap: 15px;">
-                <div class="campo" style="flex:1">
-                    <label>Edad mínima</label>
-                    <input type="number" name="edad_minima" value="<?= $actividad['edad_minima'] ?>" min="0" max="99">
-                </div>
-                <div class="campo" style="flex:1">
-                    <label>Edad máxima</label>
-                    <input type="number" name="edad_maxima" value="<?= $actividad['edad_maxima'] ?>" min="0" max="99">
-                </div>
-            </div>
-            <div style="display: flex; gap: 15px;">
-                <div class="campo" style="flex:1">
-                    <label>Mínimo participantes</label>
-                    <input type="number" name="limite_participantes_min" value="<?= $actividad['limite_participantes_min'] ?>" min="1" <?= ($restricciones['hay_miembros'] && $restricciones['participantes_actuales'] > 0) ? 'readonly class="bloqueado"' : '' ?>>
-                    <?php if ($restricciones['hay_miembros'] && $restricciones['participantes_actuales'] > 0): ?>
-                        <small>No se puede reducir por debajo de <?= $restricciones['participantes_actuales'] ?> confirmados.</small>
-                    <?php endif; ?>
-                </div>
-                <div class="campo" style="flex:1">
-                    <label>Máximo participantes</label>
-                    <input type="number" name="limite_participantes_max" value="<?= $actividad['limite_participantes_max'] ?>" min="1" <?= ($restricciones['hay_miembros'] && $restricciones['solo_aumentar_max']) ? 'min="'.$actividad['limite_participantes_max'].'"' : '' ?>>
-                    <?php if ($restricciones['hay_miembros'] && $restricciones['solo_aumentar_max']): ?>
-                        <small>Solo se puede aumentar (ya se alcanzó el límite).</small>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <div class="campo">
-                <label>Privacidad</label>
-                <select name="privacidad">
-                    <option value="publica" <?= $actividad['privacidad'] == 'publica' ? 'selected' : '' ?>>Pública</option>
-                    <option value="por_aprobacion" <?= $actividad['privacidad'] == 'por_aprobacion' ? 'selected' : '' ?>>Por aprobación</option>
-                    <option value="privada" <?= $actividad['privacidad'] == 'privada' ? 'selected' : '' ?>>Privada</option>
-                </select>
-            </div>
-            
-            <!-- Ubicación con mapa (siempre visible si no está bloqueado) -->
-            <div class="campo">
-                <label>Ubicación</label>
-                <div id="map"></div>
-                <input type="hidden" name="latitud" id="latitud" value="<?= $actividad['latitud'] ?>">
-                <input type="hidden" name="longitud" id="longitud" value="<?= $actividad['longitud'] ?>">
-                <?php if ($restricciones['hay_miembros'] && $restricciones['bloquear_ubicacion']): ?>
-                    <small class="error">Ubicación bloqueada porque hay miembros y la actividad empieza en menos de 6 horas.</small>
-                <?php endif; ?>
-            </div>
-            
-            <!-- Fechas -->
-            <div style="display: flex; gap: 15px;">
-                <div class="campo" style="flex:1">
-                    <label>Fecha y hora de inicio</label>
-                    <input type="datetime-local" name="fecha_inicio" value="<?= date('Y-m-d\TH:i', strtotime($actividad['fecha_inicio'])) ?>" <?= ($restricciones['hay_miembros'] && $restricciones['bloquear_fechas']) ? 'disabled' : '' ?>>
-                </div>
-                <div class="campo" style="flex:1">
-                    <label>Fecha y hora de fin</label>
-                    <input type="datetime-local" name="fecha_fin" value="<?= date('Y-m-d\TH:i', strtotime($actividad['fecha_fin'])) ?>" <?= ($restricciones['hay_miembros'] && $restricciones['bloquear_fechas']) ? 'disabled' : '' ?>>
-                </div>
-            </div>
-            
-            <!-- Foto -->
-            <div class="campo">
-                <label>Foto de actividad (JPG, PNG, WEBP, máx. 5MB)</label>
-                <input type="file" name="foto_actividad" accept="image/jpeg,image/png,image/webp">
-                <?php if (!empty($actividad['foto_actividad'])): ?>
-                    <div><img src="data:image/jpeg;base64,<?= base64_encode($actividad['foto_actividad']) ?>" style="width: 100px;"></div>
-                <?php endif; ?>
-            </div>
-            
-            <button type="submit" class="btn">Guardar cambios</button>
-        </form>
-    <?php endif; ?>
-
-
-    <!-- SECCIÓN: ORGANIZADORES -->
-<div class="seccion">
-    <h3>Organizadores</h3>
-    <p>Los organizadores pueden gestionar solicitudes, invitar y expulsar participantes, pero no editar la actividad.</p>
-    <div>
-        <?php foreach ($organizadores as $org): ?>
-            <div class="lista-item">
-                <span><?= htmlspecialchars($org['nombre_completo']) ?> (<?= htmlspecialchars($org['email']) ?>)</span>
-                <a href="<?= BASE_URL ?>?c=actividad&a=quitarOrganizador&id_actividad=<?= $actividad['id_actividad'] ?>&id_usuario=<?= $org['id_usuario'] ?>" class="btn btn-danger" onclick="return confirm('¿Quitar como organizador?')">Quitar</a>
-            </div>
-        <?php endforeach; ?>
-    </div>
-    
-    <h4>Agregar nuevo organizador</h4>
-    <form action="<?= BASE_URL ?>?c=actividad&a=agregarOrganizador" method="POST" style="margin-top: 10px;">
-        <input type="hidden" name="id_actividad" value="<?= $actividad['id_actividad'] ?>">
-        <div style="display: flex; gap: 10px;">
-            <div style="flex:1; position: relative;">
-                <input type="text" id="buscar_organizador_input" placeholder="Buscar por nombre, apellido o email..." style="width: 100%; padding: 8px;">
-                <div id="resultados_organizador" style="position: absolute; background: white; border: 1px solid #ccc; width: 100%; max-height: 200px; overflow-y: auto; z-index: 1000; display: none;"></div>
-                <input type="hidden" name="id_usuario" id="organizador_seleccionado" required>
-            </div>
-            <button type="button" id="btn_buscar_organizador" class="btn">Buscar</button>
-            <button type="submit" class="btn">Agregar</button>
+        <div class="mb-8 text-center md:text-left">
+            <h1 class="text-[2.5rem] md:text-[3.5rem] font-extrabold tracking-tight leading-tight text-on-surface mb-2 font-headline">
+                Editar actividad
+            </h1>
+            <p class="text-on-surface-variant max-w-xl"><?= htmlspecialchars($actividad['nombre']) ?></p>
+            <a href="<?= BASE_URL ?>?c=actividad&a=edicion" class="inline-flex items-center gap-1 text-primary text-sm font-medium mt-2 hover:underline">
+                ← Volver a mis actividades
+            </a>
         </div>
-    </form>
-</div>
 
-    <!-- SECCIÓN: SOLICITUDES PENDIENTES -->
-    <?php if ($actividad['privacidad'] == 'por_aprobacion' && !empty($solicitudes)): ?>
-    <div class="seccion">
-        <h3>Solicitudes de unión pendientes</h3>
-        <?php foreach ($solicitudes as $s): ?>
-            <div class="lista-item">
-                <span><?= htmlspecialchars($s['nombre_completo']) ?> - Solicitó el <?= $s['fecha_solicitud'] ?></span>
-                <div>
-                    <a href="<?= BASE_URL ?>?c=actividad&a=aceptarSolicitud&id_actividad=<?= $actividad['id_actividad'] ?>&id_usuario=<?= $s['id_usuario'] ?>" class="btn btn-success">Aceptar</a>
-                    <a href="<?= BASE_URL ?>?c=actividad&a=rechazarSolicitud&id_actividad=<?= $actividad['id_actividad'] ?>&id_usuario=<?= $s['id_usuario'] ?>" class="btn btn-danger">Rechazar</a>
-                </div>
+        <?php if ($restricciones['bloquear_todo']): ?>
+            <div class="bg-error-container/20 border-l-4 border-error p-6 rounded-xl text-error-container">
+                Esta actividad está <?= htmlspecialchars($actividad['estado']) ?> y no se puede editar.
             </div>
-        <?php endforeach; ?>
-    </div>
-    <?php endif; ?>
-
-    <!-- SECCIÓN: PARTICIPANTES ACTUALES -->
-    <div class="seccion">
-        <h3>Participantes actuales (<?= count($participantes) ?>)</h3>
-        <?php foreach ($participantes as $p): ?>
-            <div class="lista-item">
-                <span><?= htmlspecialchars($p['nombre_completo']) ?> - Rol: <?= $p['rol'] ?></span>
-                <?php if ($p['rol'] != 'creador' && $p['rol'] != 'organizador'): ?>
-                    <a href="<?= BASE_URL ?>?c=actividad&a=expulsarParticipante&id_actividad=<?= $actividad['id_actividad'] ?>&id_usuario=<?= $p['id_usuario'] ?>" class="btn btn-danger" onclick="return confirm('¿Expulsar a este participante?')">Expulsar</a>
-                <?php endif; ?>
-            </div>
-        <?php endforeach; ?>
-    </div>
-
-    <!-- SECCIÓN: INVITACIONES -->
-    <div class="seccion">
-        <h3>Enviar invitaciones</h3>
-        <form action="<?= BASE_URL ?>?c=actividad&a=enviarInvitacion" method="POST">
-            <input type="hidden" name="id_actividad" value="<?= $actividad['id_actividad'] ?>">
-            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                <select name="tipo_invitacion" id="tipo_invitacion" required style="width: 150px;">
-                    <option value="usuario">A usuario registrado</option>
-                    <option value="email">Por correo electrónico</option>
-                </select>
-                <div id="destinatario_usuario" style="flex:1;">
-                    <input type="text" id="buscar_invitado" placeholder="Buscar usuario por nombre o email..." style="width: 100%;">
-                    <div id="resultados_invitacion"></div>
-                    <input type="hidden" name="destinatario" id="invitado_hidden">
-                </div>
-                <div id="destinatario_email" style="flex:1; display: none;">
-                    <input type="email" name="destinatario" placeholder="correo@ejemplo.com">
-                </div>
-                <button type="submit" class="btn">Enviar invitación</button>
-            </div>
-        </form>
-        <h4>Invitaciones enviadas</h4>
-        <?php if (empty($invitaciones)): ?>
-            <p>No hay invitaciones.</p>
         <?php else: ?>
-            <?php foreach ($invitaciones as $inv): ?>
-                <div class="lista-item">
-                    <span><?= htmlspecialchars($inv['contacto'] ?? $inv['email_invitado']) ?> - Estado: <?= $inv['estado'] ?></span>
+            <!-- Formulario de edición de datos básicos -->
+            <form action="<?= BASE_URL ?>?c=actividad&a=actualizar" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 gap-8">
+                <input type="hidden" name="id_actividad" value="<?= $actividad['id_actividad'] ?>">
+
+                <!-- Imagen -->
+                <section class="bg-white p-6 md:p-8 rounded-xl shadow-[0_8px_32px_rgba(45,47,47,0.04)] space-y-6">
+                    <div class="space-y-4">
+                        <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Imagen de la actividad</label>
+                        <div class="relative w-full">
+                            <input type="file" name="foto_actividad" accept="image/jpeg,image/png,image/webp" id="fotoInput" class="hidden">
+                            <label for="fotoInput" class="aspect-video w-full bg-surface-container-low rounded-xl border-2 border-dashed border-outline-variant flex flex-col items-center justify-center cursor-pointer hover:border-primary/40 transition-all group">
+                                <span class="material-symbols-outlined text-4xl text-on-surface-variant group-hover:text-primary transition-colors">add_photo_alternate</span>
+                                <p class="mt-2 text-sm text-on-surface-variant font-medium">Cambiar imagen (JPG, PNG, WEBP, máx. 5MB)</p>
+                            </label>
+                            <div id="previewImage" class="mt-4 relative rounded-xl overflow-hidden">
+                                <?php if (!empty($actividad['foto_actividad'])): ?>
+                                    <img src="data:image/jpeg;base64,<?= base64_encode($actividad['foto_actividad']) ?>" class="w-full h-auto rounded-xl max-h-48 object-cover">
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Nombre + Tipo -->
+                <section class="bg-white p-6 md:p-8 rounded-xl shadow space-y-8">
+                    <div class="space-y-2">
+                        <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Nombre de la actividad <span class="text-error">*</span></label>
+                        <input class="w-full h-14 px-5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface font-body text-lg transition-all" 
+                               type="text" name="nombre" required maxlength="100"
+                               value="<?= htmlspecialchars($actividad['nombre']) ?>">
+                    </div>
+
+                    <div class="space-y-4">
+                        <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Clasificación <span class="text-error">*</span></label>
+                        <div class="flex flex-wrap gap-2" id="tiposContainer">
+                            <?php foreach ($tipos as $tipo): ?>
+                                <button type="button" data-id="<?= $tipo['id_tipo'] ?>" 
+                                    class="tipo-btn px-5 py-2.5 rounded-full text-sm font-medium transition-all 
+                                    <?= ($tipo['id_tipo'] == $actividad['id_tipo']) 
+                                        ? 'bg-primary text-on-primary shadow-sm' 
+                                        : 'bg-surface-container-highest text-on-surface-variant hover:bg-surface-variant' ?>">
+                                    <?= htmlspecialchars($tipo['nombre_tipo']) ?>
+                                </button>
+                            <?php endforeach; ?>
+                        </div>
+                        <input type="hidden" name="id_tipo" id="id_tipo" value="<?= $actividad['id_tipo'] ?>" required>
+                    </div>
+                </section>
+
+                <!-- Límites y edades -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-6">
+                        <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Límites de Participantes</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <span class="text-xs text-on-surface-variant font-medium">Mínimo</span>
+                                <input class="w-full h-12 px-4 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20 <?= ($restricciones['hay_miembros'] && $restricciones['participantes_actuales'] > 0) ? 'bloqueado bg-gray-100 text-gray-500' : '' ?>" 
+                                       type="number" name="limite_participantes_min" min="1"
+                                       value="<?= $actividad['limite_participantes_min'] ?>"
+                                       <?= ($restricciones['hay_miembros'] && $restricciones['participantes_actuales'] > 0) ? 'readonly' : '' ?>>
+                                <?php if ($restricciones['hay_miembros'] && $restricciones['participantes_actuales'] > 0): ?>
+                                    <p class="text-xs text-error mt-1">No se puede reducir por debajo de <?= $restricciones['participantes_actuales'] ?> confirmados.</p>
+                                <?php endif; ?>
+                            </div>
+                            <div>
+                                <span class="text-xs text-on-surface-variant font-medium">Máximo</span>
+                                <input class="w-full h-12 px-4 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20" 
+                                       type="number" name="limite_participantes_max" min="1"
+                                       value="<?= $actividad['limite_participantes_max'] ?>"
+                                       <?= ($restricciones['hay_miembros'] && $restricciones['solo_aumentar_max']) ? 'min="'.$actividad['limite_participantes_max'].'"' : '' ?>>
+                                <?php if ($restricciones['hay_miembros'] && $restricciones['solo_aumentar_max']): ?>
+                                    <p class="text-xs text-error mt-1">Solo se puede aumentar (ya se alcanzó el límite).</p>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-6">
+                        <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Rango de Edad</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <span class="text-xs text-on-surface-variant font-medium">Edad mínima</span>
+                                <input class="w-full h-12 px-4 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20" 
+                                       type="number" name="edad_minima" min="0" max="99"
+                                       value="<?= $actividad['edad_minima'] ?>">
+                            </div>
+                            <div>
+                                <span class="text-xs text-on-surface-variant font-medium">Edad máxima</span>
+                                <input class="w-full h-12 px-4 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20" 
+                                       type="number" name="edad_maxima" min="0" max="99"
+                                       value="<?= $actividad['edad_maxima'] ?>">
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            <?php endforeach; ?>
+
+                <!-- Fechas -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-6">
+                        <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Inicio <span class="text-error">*</span></label>
+                        <input type="datetime-local" name="fecha_inicio" required 
+                               class="w-full h-12 px-4 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20 <?= ($restricciones['hay_miembros'] && $restricciones['bloquear_fechas']) ? 'bg-gray-100 text-gray-500' : '' ?>"
+                               value="<?= date('Y-m-d\TH:i', strtotime($actividad['fecha_inicio'])) ?>"
+                               <?= ($restricciones['hay_miembros'] && $restricciones['bloquear_fechas']) ? 'disabled' : '' ?>>
+                    </div>
+                    <div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-6">
+                        <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Fin <span class="text-error">*</span></label>
+                        <input type="datetime-local" name="fecha_fin" required 
+                               class="w-full h-12 px-4 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20 <?= ($restricciones['hay_miembros'] && $restricciones['bloquear_fechas']) ? 'bg-gray-100 text-gray-500' : '' ?>"
+                               value="<?= date('Y-m-d\TH:i', strtotime($actividad['fecha_fin'])) ?>"
+                               <?= ($restricciones['hay_miembros'] && $restricciones['bloquear_fechas']) ? 'disabled' : '' ?>>
+                    </div>
+                </div>
+
+                <!-- Mapa y ubicación -->
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-6">
+                    <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Ubicación <span class="text-error">*</span></label>
+                    <div id="map" class="h-64 w-full rounded-xl overflow-hidden border border-outline-variant/30 z-10"></div>
+                    <div class="flex justify-end">
+                        <button type="button" id="btnMiUbicacion" class="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-xl text-sm font-medium hover:bg-primary/20 transition-all">
+                            <span class="material-symbols-outlined text-base">my_location</span> Usar mi ubicación
+                        </button>
+                    </div>
+                    <div id="direccionMostrada" class="text-sm text-on-surface-variant bg-surface-container-low p-3 rounded-lg">Cargando dirección...</div>
+                    <input type="hidden" name="latitud" id="latInput" value="<?= $actividad['latitud'] ?>">
+                    <input type="hidden" name="longitud" id="lngInput" value="<?= $actividad['longitud'] ?>">
+                    <?php if ($restricciones['hay_miembros'] && $restricciones['bloquear_ubicacion']): ?>
+                        <p class="text-xs text-error mt-1">Ubicación bloqueada porque hay miembros y la actividad empieza en menos de 6 horas.</p>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Descripción y requisitos -->
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-8">
+                    <div class="space-y-2">
+                        <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Descripción</label>
+                        <textarea class="w-full p-5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 resize-none" 
+                                  name="descripcion" rows="4"><?= htmlspecialchars($actividad['descripcion']) ?></textarea>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Requisitos (opcional)</label>
+                        <textarea class="w-full p-5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 resize-none" 
+                                  name="requisitos" rows="3"><?= htmlspecialchars($actividad['requisitos']) ?></textarea>
+                    </div>
+                </div>
+
+                <!-- Privacidad -->
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-6">
+                    <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Privacidad</label>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 radio-card">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="privacidad" value="publica" class="hidden peer" <?= $actividad['privacidad'] == 'publica' ? 'checked' : '' ?>>
+                            <div class="p-4 rounded-xl border-2 border-transparent bg-surface-container-low peer-checked:border-primary peer-checked:bg-primary/5 transition-all flex items-center gap-4">
+                                <span class="material-symbols-outlined text-primary">public</span>
+                                <div><p class="font-bold text-on-surface text-sm">Pública</p><p class="text-xs text-on-surface-variant">Cualquiera puede unirse</p></div>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="privacidad" value="por_aprobacion" class="hidden peer" <?= $actividad['privacidad'] == 'por_aprobacion' ? 'checked' : '' ?>>
+                            <div class="p-4 rounded-xl border-2 border-transparent bg-surface-container-low peer-checked:border-primary peer-checked:bg-primary/5 transition-all flex items-center gap-4">
+                                <span class="material-symbols-outlined text-primary">how_to_reg</span>
+                                <div><p class="font-bold text-on-surface text-sm">Por aprobación</p><p class="text-xs text-on-surface-variant">Organizador acepta</p></div>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="privacidad" value="privada" class="hidden peer" <?= $actividad['privacidad'] == 'privada' ? 'checked' : '' ?>>
+                            <div class="p-4 rounded-xl border-2 border-transparent bg-surface-container-low peer-checked:border-primary peer-checked:bg-primary/5 transition-all flex items-center gap-4">
+                                <span class="material-symbols-outlined text-primary">lock</span>
+                                <div><p class="font-bold text-on-surface text-sm">Privada</p><p class="text-xs text-on-surface-variant">Solo invitados</p></div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Botones -->
+                <div class="flex flex-col md:flex-row items-center justify-end gap-4 mt-4">
+                    <a href="<?= BASE_URL ?>?c=actividad&a=edicion" class="w-full md:w-auto px-8 py-4 text-primary font-bold hover:bg-surface-container-low rounded-xl transition-all text-center">Cancelar</a>
+                    <button type="submit" class="w-full md:w-auto px-10 py-4 bg-gradient-to-br from-primary to-primary-dim text-on-primary font-bold text-lg rounded-xl shadow-[0_8px_24px_rgba(98,54,255,0.3)] hover:scale-[1.02] active:scale-95 transition-all">Guardar cambios</button>
+                </div>
+            </form>
         <?php endif; ?>
     </div>
 </div>
 
+<!-- Scripts Leaflet y lógica propia -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<?php include 'includes/bottom-nav.php'; ?>
+
 <script>
-    // Inicializar mapa (siempre, a menos que esté bloqueado totalmente)
+    // Manejo de selección de tipo de actividad
+    document.addEventListener('DOMContentLoaded', function() {
+        const tipoBtns = document.querySelectorAll('.tipo-btn');
+        const tipoInput = document.getElementById('id_tipo');
+        
+        tipoBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const nuevoTipoId = this.getAttribute('data-id');
+                tipoInput.value = nuevoTipoId;
+                tipoBtns.forEach(b => {
+                    b.classList.remove('bg-primary', 'text-on-primary', 'shadow-sm');
+                    b.classList.add('bg-surface-container-highest', 'text-on-surface-variant');
+                });
+                this.classList.remove('bg-surface-container-highest', 'text-on-surface-variant');
+                this.classList.add('bg-primary', 'text-on-primary', 'shadow-sm');
+            });
+        });
+    });
+    
     <?php if (!$restricciones['bloquear_todo']): ?>
+        // Coordenadas iniciales desde la actividad
         var lat = <?= (float)($actividad['latitud'] ?? 18.4500) ?>;
         var lng = <?= (float)($actividad['longitud'] ?? -96.3500) ?>;
+        
+        // --- Icono personalizado ---
+        var customIcon = L.divIcon({
+            className: 'custom-div-icon',
+            html: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" fill="#5a2af7"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>',
+            iconSize: [28, 28],
+            popupAnchor: [0, -14]
+        });
+        
+        // Inicializar mapa
         var map = L.map('map').setView([lat, lng], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CartoDB'
         }).addTo(map);
-        var marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+        
+        // Marcador arrastrable CON ICONO PERSONALIZADO
+        var marker = L.marker([lat, lng], { 
+            draggable: true, 
+            icon: customIcon 
+        }).addTo(map);
+        
+        // Funciones para actualizar los campos ocultos y mostrar la dirección
         function actualizarCoordenadas(lat, lng) {
-            document.getElementById('latitud').value = lat;
-            document.getElementById('longitud').value = lng;
+            document.getElementById('latInput').value = lat;
+            document.getElementById('lngInput').value = lng;
+            actualizarDireccion(lat, lng);
         }
+        
+        // Geocodificación inversa para mostrar la dirección (Nominatim OSM)
+        function actualizarDireccion(lat, lng) {
+            var url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.display_name) {
+                        document.getElementById('direccionMostrada').innerHTML = data.display_name;
+                    } else {
+                        document.getElementById('direccionMostrada').innerHTML = 'Dirección no encontrada';
+                    }
+                })
+                .catch(() => {
+                    document.getElementById('direccionMostrada').innerHTML = 'No se pudo cargar la dirección';
+                });
+        }
+        
+        // Evento al soltar el marcador
         marker.on('dragend', function(e) {
             var pos = marker.getLatLng();
             actualizarCoordenadas(pos.lat, pos.lng);
         });
+        
+        // Evento al hacer clic en el mapa
         map.on('click', function(e) {
             marker.setLatLng(e.latlng);
             actualizarCoordenadas(e.latlng.lat, e.latlng.lng);
         });
+        
+        // Inicializar campos y dirección con los valores actuales
         actualizarCoordenadas(lat, lng);
         
-        // Si la ubicación está bloqueada por restricciones, deshabilitamos el mapa (pero se muestra)
+        // Si la ubicación está bloqueada por restricciones, deshabilitar interacción
         <?php if ($restricciones['hay_miembros'] && $restricciones['bloquear_ubicacion']): ?>
             marker.dragging.disable();
             map.dragging.disable();
@@ -272,110 +325,6 @@ if (!isset($_SESSION['usuario_id'])) {
     <?php else: ?>
         document.getElementById('map').style.display = 'none';
     <?php endif; ?>
-
-   // Búsqueda de usuarios para agregar organizador
-const inputOrg = document.getElementById('buscar_organizador_input');
-const btnBuscarOrg = document.getElementById('btn_buscar_organizador');
-const resultadosOrgDiv = document.getElementById('resultados_organizador');
-const hiddenOrgId = document.getElementById('organizador_seleccionado');
-
-// Función para buscar usuarios (usa el endpoint correcto: buscarAmigos)
-async function buscarUsuarios(termino) {
-    if (termino.length < 2) return [];
-    const response = await fetch(`<?= BASE_URL ?>?c=actividad&a=buscarAmigos&term=${encodeURIComponent(termino)}`);
-    return await response.json();
-}
-
-// Evento al hacer clic en Buscar
-btnBuscarOrg.addEventListener('click', async function() {
-    const term = inputOrg.value.trim();
-    if (term.length < 2) {
-        resultadosOrgDiv.innerHTML = '<div class="error">Ingrese al menos 2 caracteres</div>';
-        resultadosOrgDiv.style.display = 'block';
-        return;
-    }
-    const data = await buscarUsuarios(term);
-    if (!data || data.length === 0) {
-        resultadosOrgDiv.innerHTML = '<div class="error">No se encontraron usuarios</div>';
-        resultadosOrgDiv.style.display = 'block';
-        return;
-    }
-    // Mostrar lista de resultados
-    let html = '';
-    data.forEach(user => {
-        html += `<div class="resultado-busqueda" onclick="seleccionarOrganizador(${user.id_usuario}, '${user.nombre_completo.replace(/'/g, "\\'")}')">
-                    ${user.nombre_completo} (${user.email})
-                </div>`;
-    });
-    resultadosOrgDiv.innerHTML = html;
-    resultadosOrgDiv.style.display = 'block';
-});
-
-// Ocultar resultados al hacer clic fuera (opcional)
-document.addEventListener('click', function(e) {
-    if (!inputOrg.contains(e.target) && !btnBuscarOrg.contains(e.target) && !resultadosOrgDiv.contains(e.target)) {
-        resultadosOrgDiv.style.display = 'none';
-    }
-});
-
-// Función global para seleccionar organizador
-window.seleccionarOrganizador = function(id, nombre) {
-    hiddenOrgId.value = id;
-    inputOrg.value = nombre;
-    resultadosOrgDiv.style.display = 'none';
-};
-    
-    
-    // Búsqueda para invitaciones (igual que antes)
-    const busquedaInv = document.getElementById('buscar_invitado');
-    const resultadosInv = document.getElementById('resultados_invitacion');
-    const hiddenInv = document.getElementById('invitado_hidden');
-    let timeoutInv;
-    busquedaInv.addEventListener('input', function() {
-        clearTimeout(timeoutInv);
-        const term = this.value.trim();
-        if (term.length < 2) {
-            resultadosInv.innerHTML = '';
-            return;
-        }
-        timeoutInv = setTimeout(() => {
-            fetch('<?= BASE_URL ?>?c=actividad&a=buscarUsuario&term=' + encodeURIComponent(term))
-                .then(res => res.json())
-                .then(data => {
-                    resultadosInv.innerHTML = '';
-                    data.forEach(user => {
-                        const div = document.createElement('div');
-                        div.textContent = user.nombre_completo + ' (' + user.email + ')';
-                        div.className = 'resultado-busqueda';
-                        div.onclick = () => {
-                            hiddenInv.value = user.id_usuario;
-                            busquedaInv.value = user.nombre_completo;
-                            resultadosInv.innerHTML = '';
-                        };
-                        resultadosInv.appendChild(div);
-                    });
-                });
-        }, 300);
-    });
-    
-    // Mostrar/ocultar campos de invitación
-    const tipoSelect = document.getElementById('tipo_invitacion');
-    const divUsuario = document.getElementById('destinatario_usuario');
-    const divEmail = document.getElementById('destinatario_email');
-    tipoSelect.addEventListener('change', function() {
-        if (this.value === 'usuario') {
-            divUsuario.style.display = 'block';
-            divEmail.style.display = 'none';
-            document.querySelector('#destinatario_email input').removeAttribute('name');
-            document.querySelector('#destinatario_usuario input').setAttribute('name', 'buscar_amigo');
-        } else {
-            divUsuario.style.display = 'none';
-            divEmail.style.display = 'block';
-            document.querySelector('#destinatario_usuario input').removeAttribute('name');
-            document.querySelector('#destinatario_email input').setAttribute('name', 'destinatario');
-        }
-    }
-    );
 </script>
 </body>
 </html>

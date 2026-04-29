@@ -73,7 +73,7 @@ if (!isset($_SESSION['usuario_id'])) {
             L.marker([lat, lng]).addTo(map);
         </script>
     <?php endif; ?>
-    <p><a href="<?= BASE_URL ?>?c=amigos&a=nuevosAmigos">← Volver a buscar amigos</a></p>
+    <p><a href="javascript:history.back()">← Volver</a></p>
 </div>
 </body>
 </html>

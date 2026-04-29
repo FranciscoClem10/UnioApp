@@ -12,6 +12,8 @@ if ($controller === 'dashboard') {
     $seccion_activa = 'crear';  // o 'actividad', según prefieras
 } elseif ($controller === 'mensajes') {
     $seccion_activa = 'mensajes';
+} elseif ($controller === 'actividad' && $action === 'edicion') {
+    $seccion_usuario = 'actividad';
 } elseif ($controller === 'amigos') {
     // No hay botón directo en top-nav, pero lo dejamos por si acaso
     $seccion_activa = '';
@@ -81,6 +83,10 @@ if (class_exists('ModeloNotificacion')) {
             <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors <?= $seccion_usuario === 'amigos' ? 'bg-primary/5 text-primary' : 'text-on-surface hover:bg-primary/5 hover:text-primary' ?>" 
             href="<?= BASE_URL ?>?c=amigos&a=index">
                 <span class="material-symbols-outlined">group</span> Mis Conexiones
+            </a>
+            <a href="<?= BASE_URL ?>?c=actividad&a=edicion" 
+                class="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors <?= $seccion_usuario === 'actividad' ? 'bg-primary/5 text-primary' : 'text-on-surface hover:bg-primary/5 hover:text-primary' ?>">
+                <span class="material-symbols-outlined">history</span> Mis actividades
             </a>
             <a href="<?= BASE_URL ?>?c=login&a=logout" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-100 transition-colors cursor-pointer">
                 <span class="material-symbols-outlined">logout</span> Cerrar sesión
