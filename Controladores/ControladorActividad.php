@@ -1,6 +1,7 @@
 <?php
 require_once 'Modelos/ModeloActividad.php';
 require_once 'Modelos/ModeloNotificacion.php';
+
 class ControladorActividad {
    
     public function crear() {
@@ -206,10 +207,10 @@ class ControladorActividad {
         }
         // Obtener datos adicionales necesarios para la vista
         $tipos = $modelo->obtenerTiposActividad();
-        $organizadores = $modelo->obtenerOrganizadores($id);
-        $solicitudes = $modelo->obtenerSolicitudesPendientes($id);
-        $participantes = $modelo->obtenerParticipantesAceptados($id);
-        $invitaciones = $modelo->obtenerInvitaciones($id);
+        //$organizadores = $modelo->obtenerOrganizadores($id);
+        //$solicitudes = $modelo->obtenerSolicitudesPendientes($id);
+        //$participantes = $modelo->obtenerParticipantesAceptados($id);
+        //$invitaciones = $modelo->obtenerInvitaciones($id);
         // Verificar restricciones de edición
         $restricciones = $this->calcularRestricciones($actividad);
         require_once 'Vistas/Actividad/editar.php';
@@ -332,6 +333,8 @@ class ControladorActividad {
             $foto_blob = file_get_contents($_FILES['foto_actividad']['tmp_name']);
         }
 
+        // NOTA: El siguiente bloque es parte del código original y se mantiene aquí.
+        // Alerta: la variable $db no está definida; se debería corregir en una refactorización posterior.
         if ($datos['estado'] == 'cancelada' && $actividad['estado'] != 'cancelada') {
             $sqlPart = "SELECT id_usuario FROM participantes WHERE id_actividad = :id_act AND estado = 'aceptado'";
             $stmtPart = $db->prepare($sqlPart);
@@ -385,233 +388,27 @@ class ControladorActividad {
         exit;
     }
 
-    // --- Acciones para gestionar organizadores, solicitudes, invitaciones ---
-    public function agregarOrganizador() {
-        if (!isset($_SESSION['usuario_id'])) exit;
-        $id_actividad = (int)($_POST['id_actividad'] ?? 0);
-        $id_usuario = (int)($_POST['id_usuario'] ?? 0);
+    // Helper privado para calcular restricciones de edición
+    private function calcularRestricciones($actividad) {
         $modelo = new ModeloActividad();
-        $actividad = $modelo->obtenerPorId($id_actividad);
-        if ($actividad['id_creador'] != $_SESSION['usuario_id']) {
-            $_SESSION['error_edicion'] = "No autorizado.";
-            header('Location: ' . BASE_URL . '?c=actividad&a=editar&id=' . $id_actividad);
-            exit;
-        }
-        if ($id_usuario <= 0) {
-            $_SESSION['error_edicion'] = "Usuario inválido.";
-            header('Location: ' . BASE_URL . '?c=actividad&a=editar&id=' . $id_actividad);
-            exit;
-        }
-        if ($modelo->agregarOrganizador($id_actividad, $id_usuario)) {
-            $_SESSION['exito_edicion'] = "Organizador agregado.";
-        } else {
-            $_SESSION['error_edicion'] = "Error al agregar organizador.";
-        }
-        header('Location: ' . BASE_URL . '?c=actividad&a=editar&id=' . $id_actividad);
-        exit;
+        $miembros = $modelo->contarMiembros($actividad['id_actividad']);
+        $ahora = new DateTime();
+        $inicio = new DateTime($actividad['fecha_inicio']);
+        $diferenciaHoras = ($inicio->getTimestamp() - $ahora->getTimestamp()) / 3600;
+        $participantesActuales = $modelo->contarParticipantesAceptados($actividad['id_actividad']);
+        $maxAlcanzado = ($actividad['limite_participantes_max'] !== null && $participantesActuales >= $actividad['limite_participantes_max']);
+        
+        // Si no hay miembros, se puede editar todo (sin restricciones de tiempo ni límites)
+        $hayMiembros = ($miembros > 0);
+        
+        return [
+            'bloquear_todo' => in_array($actividad['estado'], ['finalizada', 'en_curso', 'cancelada']),
+            'bloquear_fechas' => $hayMiembros && ($diferenciaHoras <= 6),
+            'bloquear_ubicacion' => $hayMiembros && ($diferenciaHoras <= 6),
+            'solo_aumentar_max' => $hayMiembros && $maxAlcanzado,
+            'participantes_actuales' => $participantesActuales,
+            'hay_miembros' => $hayMiembros
+        ];
     }
-    
-
-    public function quitarOrganizador() {
-        if (!isset($_SESSION['usuario_id'])) exit;
-        $id_actividad = (int)($_GET['id_actividad'] ?? 0);
-        $id_usuario = (int)($_GET['id_usuario'] ?? 0);
-        $modelo = new ModeloActividad();
-        $actividad = $modelo->obtenerPorId($id_actividad);
-        if ($actividad['id_creador'] != $_SESSION['usuario_id']) {
-            $_SESSION['error_edicion'] = "No autorizado.";
-            header('Location: ' . BASE_URL . '?c=actividad&a=editar&id=' . $id_actividad);
-            exit;
-        }
-        if ($modelo->quitarOrganizador($id_actividad, $id_usuario)) {
-            $_SESSION['exito_edicion'] = "Organizador removido.";
-        } else {
-            $_SESSION['error_edicion'] = "Error al remover organizador.";
-        }
-        header('Location: ' . BASE_URL . '?c=actividad&a=editar&id=' . $id_actividad);
-        exit;
-    }
-
-    public function aceptarSolicitud() {
-        if (!isset($_SESSION['usuario_id'])) exit;
-        $id_actividad = (int)($_GET['id_actividad'] ?? 0);
-        $id_usuario = (int)($_GET['id_usuario'] ?? 0);
-        $modelo = new ModeloActividad();
-
-        // Verificar permisos
-        if (!$modelo->esOrganizadorOCreador($id_actividad, $_SESSION['usuario_id'])) {
-            $_SESSION['error_edicion'] = "No autorizado.";
-            header('Location: ' . BASE_URL . '?c=actividad&a=editar&id=' . $id_actividad);
-            exit;
-        }
-
-        // Obtener datos de la actividad (para el nombre en la notificación)
-        $actividad = $modelo->obtenerPorId($id_actividad);
-        if (!$actividad) {
-            $_SESSION['error_edicion'] = "Actividad no encontrada.";
-            header('Location: ' . BASE_URL . '?c=actividad&a=editar&id=' . $id_actividad);
-            exit;
-        }
-
-        // Cambiar estado
-        if ($modelo->cambiarEstadoParticipante($id_actividad, $id_usuario, 'aceptado')) {
-            $_SESSION['exito_edicion'] = "Solicitud aceptada.";
-
-            //Notificación de ACEPTACIÓN
-            $modeloNotif = new ModeloNotificacion();
-            $modeloNotif->crear(
-                $id_usuario,
-                'actividad',
-                'Solicitud aceptada',
-                'Tu solicitud para la actividad "' . htmlspecialchars($actividad['nombre']) . '" ha sido ACEPTADA.',
-                '?c=actividad&a=detalle&id=' . $id_actividad
-            );
-        } else {
-            $_SESSION['error_edicion'] = "Error al aceptar.";
-        }
-
-        header('Location: ' . BASE_URL . '?c=actividad&a=editar&id=' . $id_actividad);
-        exit;
-    }
-
-    public function rechazarSolicitud() {
-        if (!isset($_SESSION['usuario_id'])) exit;
-        $id_actividad = (int)($_GET['id_actividad'] ?? 0);
-        $id_usuario = (int)($_GET['id_usuario'] ?? 0);
-        $modelo = new ModeloActividad();
-
-        if (!$modelo->esOrganizadorOCreador($id_actividad, $_SESSION['usuario_id'])) {
-            $_SESSION['error_edicion'] = "No autorizado.";
-            header('Location: ' . BASE_URL . '?c=actividad&a=editar&id=' . $id_actividad);
-            exit;
-        }
-
-        $actividad = $modelo->obtenerPorId($id_actividad);
-        if (!$actividad) {
-            $_SESSION['error_edicion'] = "Actividad no encontrada.";
-            header('Location: ' . BASE_URL . '?c=actividad&a=editar&id=' . $id_actividad);
-            exit;
-        }
-
-        if ($modelo->cambiarEstadoParticipante($id_actividad, $id_usuario, 'rechazado')) {
-            $_SESSION['exito_edicion'] = "Solicitud rechazada.";
-
-            // Notificación de RECHAZO
-            $modeloNotif = new ModeloNotificacion();
-            $modeloNotif->crear(
-                $id_usuario,
-                'actividad',
-                'Solicitud rechazada',
-                'Tu solicitud para la actividad "' . htmlspecialchars($actividad['nombre']) . '" ha sido RECHAZADA.',
-                null
-            );
-        } else {
-            $_SESSION['error_edicion'] = "Error al rechazar.";
-        }
-
-        header('Location: ' . BASE_URL . '?c=actividad&a=editar&id=' . $id_actividad);
-        exit;
-    }
-
-    public function expulsarParticipante() {
-        if (!isset($_SESSION['usuario_id'])) exit;
-        $id_actividad = (int)($_GET['id_actividad'] ?? 0);
-        $id_usuario = (int)($_GET['id_usuario'] ?? 0);
-        $modelo = new ModeloActividad();
-        if (!$modelo->esOrganizadorOCreador($id_actividad, $_SESSION['usuario_id'])) {
-            $_SESSION['error_edicion'] = "No autorizado.";
-            header('Location: ' . BASE_URL . '?c=actividad&a=editar&id=' . $id_actividad);
-            exit;
-        }
-        if ($modelo->expulsarParticipante($id_actividad, $id_usuario)) {
-            $_SESSION['exito_edicion'] = "Participante expulsado.";
-        } else {
-            $_SESSION['error_edicion'] = "Error al expulsar.";
-        }
-        header('Location: ' . BASE_URL . '?c=actividad&a=editar&id=' . $id_actividad);
-        exit;
-    }
-
-    // Enviar invitación a usuario registrado o email externo
-    public function enviarInvitacion() {
-        if (!isset($_SESSION['usuario_id'])) exit;
-        $id_actividad = (int)($_POST['id_actividad'] ?? 0);
-        $tipo = $_POST['tipo_invitacion'] ?? '';
-        $destinatario = trim($_POST['destinatario'] ?? '');
-        $modelo = new ModeloActividad();
-        if (!$modelo->esOrganizadorOCreador($id_actividad, $_SESSION['usuario_id'])) {
-            $_SESSION['error_edicion'] = "No autorizado.";
-            header('Location: ' . BASE_URL . '?c=actividad&a=editar&id=' . $id_actividad);
-            exit;
-        }
-        if ($tipo === 'usuario') {
-            $id_usuario = (int)$destinatario;
-            $resultado = $modelo->invitarUsuario($id_actividad, $_SESSION['usuario_id'], $id_usuario);
-        } elseif ($tipo === 'email') {
-            $resultado = $modelo->invitarEmail($id_actividad, $_SESSION['usuario_id'], $destinatario);
-        } else {
-            $resultado = false;
-        }
-        if ($resultado) {
-            $_SESSION['exito_edicion'] = "Invitación enviada.";
-        } else {
-            $_SESSION['error_edicion'] = "Error al enviar invitación.";
-        }
-
-        $modeloNotif->crear(
-            $id_invitado,
-            'invitacion',
-            'Invitación a actividad',
-            'Has sido invitado a la actividad "' . $actividad['nombre'] . '".',
-            '?c=actividad&a=detalle&id=' . $id_actividad
-        );
-        header('Location: ' . BASE_URL . '?c=actividad&a=editar&id=' . $id_actividad);
-        exit;
-    }
-
-private function calcularRestricciones($actividad) {
-    $modelo = new ModeloActividad();
-    $miembros = $modelo->contarMiembros($actividad['id_actividad']);
-    $ahora = new DateTime();
-    $inicio = new DateTime($actividad['fecha_inicio']);
-    $diferenciaHoras = ($inicio->getTimestamp() - $ahora->getTimestamp()) / 3600;
-    $participantesActuales = $modelo->contarParticipantesAceptados($actividad['id_actividad']);
-    $maxAlcanzado = ($actividad['limite_participantes_max'] !== null && $participantesActuales >= $actividad['limite_participantes_max']);
-    
-    // Si no hay miembros, se puede editar todo (sin restricciones de tiempo ni límites)
-    $hayMiembros = ($miembros > 0);
-    
-    return [
-        'bloquear_todo' => in_array($actividad['estado'], ['finalizada', 'en_curso', 'cancelada']),
-        'bloquear_fechas' => $hayMiembros && ($diferenciaHoras <= 6),
-        'bloquear_ubicacion' => $hayMiembros && ($diferenciaHoras <= 6),
-        'solo_aumentar_max' => $hayMiembros && $maxAlcanzado,
-        'participantes_actuales' => $participantesActuales,
-        'hay_miembros' => $hayMiembros
-    ];
-}
-
-    public function buscarAmigos() {
-    if (!isset($_SESSION['usuario_id'])) {
-        http_response_code(401);
-        echo json_encode(['error' => 'No autorizado']);
-        exit;
-    }
-    $term = $_GET['term'] ?? '';
-    if (strlen($term) < 2) {
-        echo json_encode([]);
-        exit;
-    }
-    $modelo = new ModeloActividad();
-    $amigos = $modelo->buscarAmigosParaInvitacion($_SESSION['usuario_id'], $term);
-    // Agregar nombre_completo a cada resultado
-    foreach ($amigos as &$a) {
-        $a['nombre_completo'] = trim(($a['nombre'] ?? '') . ' ' . ($a['apellido_paterno'] ?? '') . ' ' . ($a['apellido_materno'] ?? ''));
-    }
-    header('Content-Type: application/json');
-    echo json_encode($amigos);
-    exit;
-}
-
 }
 ?>

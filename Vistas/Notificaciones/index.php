@@ -12,14 +12,16 @@ require_once __DIR__ . '/../../includes/header.php';
     <?php require_once __DIR__ . '/../../includes/top-nav.php';?>
 
     <!-- Contenido principal: scrollable (siempre con scrollbar visible a la derecha) -->
-    <main class="flex-1 overflow-y-scroll pt-24 pb-20 md:pb-12 px-4 md:px-6 max-w-4xl mx-auto w-full" id ="scroll">
-        <!-- Cabecera con acciones -->
-        <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-                <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-on-surface">Notificaciones</h1>
+    <main class="flex-1 overflow-y-scroll pt-20 pb-20 md:pb-12 px-4 md:px-6 max-w-4xl mx-auto w-full" id ="scroll">
+        <!-- Cabecera con acciones: ahora los botones van debajo del título con separación -->
+        <div class="mb-8 flex flex-col">
+            <div class="mb-4">
+                <h1 class="text-[3.5rem] font-extrabold tracking-tight text-on-surface leading-tight mb-4">
+                    <span class="text-primary">Notificaciones</span>
+                </h1>
                 <p class="text-on-surface-variant text-base mt-1">Mantente al día con lo que sucede en tu red.</p>
             </div>
-            <div class="flex flex-wrap gap-3">
+            <div class="flex flex-wrap gap-3 mt-2">
                 <a href="<?= BASE_URL ?>?c=notificacion&a=marcarTodasLeidas" class="inline-flex items-center gap-2 px-4 py-2 bg-surface-container-low text-on-surface-variant rounded-full text-sm font-medium hover:bg-surface-container transition-colors">
                     <span class="material-symbols-outlined text-base">done_all</span>
                     Marcar todas como leídas

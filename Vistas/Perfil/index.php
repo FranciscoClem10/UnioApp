@@ -101,7 +101,7 @@ if (!isset($_SESSION['usuario_id'])) {
                     </div>
                 <?php endforeach; ?>
             </div>
-            <p><a href="<?= BASE_URL ?>?c=amigos&a=nuevosAmigos">➕ Buscar más amigos</a></p>
+            <p><a href="<?= BASE_URL ?>?c=amigos&a=index">➕ Buscar más amigos</a></p>
         <?php endif; ?>
     </div>
 

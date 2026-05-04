@@ -1,5 +1,6 @@
 <?php
 require_once 'Modelos/ModeloUsuario.php';
+require_once 'Modelos/ModeloAjustes.php';
 class ControladorLogin {
     
     public function index() {
@@ -13,7 +14,7 @@ class ControladorLogin {
         require_once 'Vistas/Login/login.php';
     }
 
-    public function verificar() {
+        public function verificar() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->index();
             return;
@@ -36,7 +37,12 @@ class ControladorLogin {
             $_SESSION['usuario_id'] = $usuario['id_usuario'];
             $_SESSION['usuario_nombre'] = $usuario['nombre'];
             $_SESSION['usuario_email'] = $usuario['email'];
-            // Redirigir al dashboard (por ahora a una página simple)
+
+            // --- CARGA DE AJUSTES EN SESIÓN ---
+            $modeloAj = new ModeloAjustes();
+            $ajustes = $modeloAj->obtenerAjustes($usuario['id_usuario']); // crea si no existen
+            $_SESSION['ajustes'] = $ajustes;
+
             header('Location: ' . BASE_URL . '?c=dashboard&a=index');
             exit;
         } else {

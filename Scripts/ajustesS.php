@@ -1,80 +1,98 @@
-<?php 
-if (session_status() === PHP_SESSION_NONE) session_start();
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-if (!isset($_SESSION['usuario_id'])) {
-    header('Location: ' . BASE_URL . '?c=login');
+// Manejar toggle de modo vía GET (para evitar dependencias JS complejas)
+if (isset($_GET['toggle_modo'])) {
+    // Obtener estado actual
+    $current = $_SESSION['modo_oscuro'] ?? ($_SESSION['ajustes']['modo_oscuro'] ?? 0);
+    $newMode = $current ? 0 : 1;
+    $_SESSION['modo_oscuro'] = $newMode;
+    $_SESSION['ajustes']['modo_oscuro'] = $newMode;
+    // Redirigir limpiando el parámetro GET
+    header('Location: ' . strtok($_SERVER['REQUEST_URI'], '?'));
     exit;
 }
 
-// Obtener modo oscuro desde la sesión (misma lógica que en ajustes)
-$modoOscuro = $_SESSION['modo_oscuro'] ?? ($_SESSION['ajustes']['modo_oscuro'] ?? 0);
-
-$controller = $_GET['c'] ?? '';
-$action = $_GET['a'] ?? '';
-
-// TÍTULO
-$titulo = 'Unio';
-
-if ($controller === 'dashboard') {
-    $titulo = 'Unio | Explorar';
-} elseif ($controller === 'actividad' && $action === 'crear') {
-    $titulo = 'Unio | Crear actividad';
-} elseif ($controller === 'actividad' && $action === 'editar') {
-    $titulo = 'Unio | Editar Actividad';
-} elseif ($controller === 'mensajes') {
-    $titulo = 'Unio | Mensajes';
-} elseif ($controller === 'perfil' && $action === 'index') {
-    $titulo = 'Unio | Mi perfil';
-} elseif ($controller === 'perfil' && $action === 'ajustes') {
-    $titulo = 'Unio | Ajustes';
-} elseif ($controller === 'amigos') {
-    $titulo = 'Unio | Conexiones';
-} elseif ($controller === 'notificacion') {
-    $titulo = 'Unio | Notificaciones';
+// Determinar modo oscuro: prioridad sesión directa, luego ajustes, por defecto claro
+if (isset($_SESSION['modo_oscuro'])) {
+    $modoOscuro = $_SESSION['modo_oscuro'];
+} elseif (isset($_SESSION['ajustes']['modo_oscuro'])) {
+    $modoOscuro = $_SESSION['ajustes']['modo_oscuro'];
+} else {
+    $modoOscuro = 0; // claro por defecto
 }
 
+$modoTexto = $modoOscuro ? 'Oscuro' : 'Claro';
+$modoOpuesto = $modoOscuro ? 'Claro' : 'Oscuro';
 ?>
-
 <!DOCTYPE html>
 <html class="<?= $modoOscuro ? 'dark' : 'light' ?>" lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    
-    <title><?= htmlspecialchars($titulo) ?></title>
-    
-    <!-- Tailwind CSS -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unio | Ajustes</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- Material Symbols -->
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             darkMode: "class",
             theme: {
                 extend: {
                     colors: {
-                        "outline": "#767777", "inverse-surface": "#0c0f0f", "primary-fixed-dim": "#9581ff",
-                        "on-secondary": "#f9efff", "tertiary-dim": "#8c2a5b", "on-secondary-container": "#563098",
-                        "on-error": "#ffefef", "on-secondary-fixed-variant": "#603aa2", "surface-container-lowest": "#ffffff",
-                        "on-error-container": "#510017", "background": "#f6f6f6", "surface-tint": "#5a2af7",
-                        "surface-container-high": "#e1e3e3", "error-dim": "#a70138", "primary-fixed": "#a292ff",
-                        "outline-variant": "#acadad", "primary": "#5a2af7", "on-background": "#2d2f2f",
-                        "secondary-fixed": "#ddc8ff", "surface-container": "#e7e8e8", "on-surface-variant": "#5a5c5c",
-                        "on-tertiary": "#ffeff2", "error-container": "#f74b6d", "secondary-dim": "#5f39a1",
-                        "surface-bright": "#f6f6f6", "on-surface": "#2d2f2f", "primary-dim": "#4e0bec",
-                        "secondary-container": "#ddc8ff", "error": "#b41340", "secondary-fixed-dim": "#d2b8ff",
-                        "surface-variant": "#dbdddd", "on-primary-container": "#220076", "on-primary-fixed": "#000000",
-                        "on-tertiary-fixed": "#37001e", "on-primary-fixed-variant": "#2b0090", "on-tertiary-container": "#63033b",
-                        "secondary": "#6b46ae", "tertiary": "#9b3667", "on-tertiary-fixed-variant": "#6f1044",
-                        "surface-container-low": "#f0f1f1", "tertiary-fixed-dim": "#f27db0", "on-primary": "#f6f0ff",
-                        "inverse-on-surface": "#9c9d9d", "tertiary-container": "#ff8cbd", "tertiary-fixed": "#ff8cbd",
-                        "surface": "#f6f6f6", "on-secondary-fixed": "#431783", "inverse-primary": "#927dff",
-                        "surface-container-highest": "#dbdddd", "surface-dim": "#d3d5d5", "primary-container": "#a292ff"
+                        "outline": "#767777",
+                        "inverse-surface": "#0c0f0f",
+                        "primary-fixed-dim": "#9581ff",
+                        "on-secondary": "#121113",
+                        "tertiary-dim": "#8c2a5b",
+                        "on-secondary-container": "#563098",
+                        "on-error": "#ffefef",
+                        "on-secondary-fixed-variant": "#603aa2",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error-container": "#510017",
+                        "background": "#f6f6f6",
+                        "surface-tint": "#5a2af7",
+                        "surface-container-high": "#e1e3e3",
+                        "error-dim": "#a70138",
+                        "primary-fixed": "#a292ff",
+                        "outline-variant": "#acadad",
+                        "primary": "#5a2af7",
+                        "on-background": "#2d2f2f",
+                        "secondary-fixed": "#ddc8ff",
+                        "surface-container": "#e7e8e8",
+                        "on-surface-variant": "#5a5c5c",
+                        "on-tertiary": "#ffeff2",
+                        "error-container": "#f74b6d",
+                        "secondary-dim": "#5f39a1",
+                        "surface-bright": "#f6f6f6",
+                        "on-surface": "#2d2f2f",
+                        "primary-dim": "#4e0bec",
+                        "secondary-container": "#ddc8ff",
+                        "error": "#b41340",
+                        "secondary-fixed-dim": "#d2b8ff",
+                        "surface-variant": "#dbdddd",
+                        "on-primary-container": "#220076",
+                        "on-primary-fixed": "#000000",
+                        "on-tertiary-fixed": "#37001e",
+                        "on-primary-fixed-variant": "#2b0090",
+                        "on-tertiary-container": "#63033b",
+                        "secondary": "#6b46ae",
+                        "tertiary": "#9b3667",
+                        "on-tertiary-fixed-variant": "#6f1044",
+                        "surface-container-low": "#f0f1f1",
+                        "tertiary-fixed-dim": "#f27db0",
+                        "on-primary": "#f6f0ff",
+                        "inverse-on-surface": "#9c9d9d",
+                        "tertiary-container": "#ff8cbd",
+                        "tertiary-fixed": "#ff8cbd",
+                        "surface": "#f6f6f6",
+                        "on-secondary-fixed": "#431783",
+                        "inverse-primary": "#927dff",
+                        "surface-container-highest": "#dbdddd",
+                        "surface-dim": "#d3d5d5",
+                        "primary-container": "#a292ff"
                     },
                     fontFamily: {
                         "headline": ["Plus Jakarta Sans"],
@@ -86,46 +104,26 @@ if ($controller === 'dashboard') {
                         "lg": "0.5rem",
                         "xl": "0.75rem",
                         "full": "9999px"
-                    },
-                },
-            },
+                    }
+                }
+            }
         }
     </script>
-    
     <style>
-        /* Transiciones suaves para el cambio de modo */
-        * {
-            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-        }
-
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-
-        .glass-nav {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(20px);
-        }
-
+        * { transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f6f6f6; }
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
-
-        ::-webkit-scrollbar {
-            width: 4px;
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        #toast {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform: translateY(20px);
+            opacity: 0;
         }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #e7e8e8;
-            border-radius: 10px;
-        }
-
-        textarea {
-            scrollbar-width: thin;
+        #toast.show {
+            transform: translateY(0);
+            opacity: 1;
         }
 
         /* ========== MODO OSCURO REAL | SOBRESCRITURA DE CLASES TAILWIND ========== */
@@ -145,6 +143,20 @@ if ($controller === 'dashboard') {
         .dark .bg-surface-bright { background-color: #3A3A3A !important; }
         .dark .bg-surface-dim { background-color: #121212 !important; }
         .dark .bg-surface-variant { background-color: #2D2D2D !important; }
+		
+		/* ========== SOPORTE PARA OPACIDAD EN MODO OSCURO ========== */
+		.dark .bg-background\/80 {
+			background-color: rgba(18, 18, 18, 0.8) !important;
+		}
+		.dark .bg-surface-container\/90 {
+			background-color: rgba(42, 42, 42, 0.9) !important;
+		}
+		.dark .border-outline-variant\/10 {
+			border-color: rgba(68, 64, 79, 0.1) !important;
+		}
+		.dark .border-outline-variant\/20 {
+			border-color: rgba(68, 64, 79, 0.2) !important;
+		}
         
         /* Textos sobre superficies */
         .dark .text-on-background { color: #EDEDED !important; }
@@ -211,20 +223,6 @@ if ($controller === 'dashboard') {
             --tw-shadow-color: rgba(0, 0, 0, 0.6);
             --tw-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -1px rgba(0, 0, 0, 0.4);
         }
-		
-		/* ========== SOPORTE PARA OPACIDAD EN MODO OSCURO ========== */
-		.dark .bg-background\/80 {
-			background-color: rgba(18, 18, 18, 0.8) !important;
-		}
-		.dark .bg-surface-container\/90 {
-			background-color: rgba(42, 42, 42, 0.9) !important;
-		}
-		.dark .border-outline-variant\/10 {
-			border-color: rgba(68, 64, 79, 0.1) !important;
-		}
-		.dark .border-outline-variant\/20 {
-			border-color: rgba(68, 64, 79, 0.2) !important;
-		}
         
         /* Estilos base para body y contenedores */
         .dark body {
@@ -253,15 +251,5 @@ if ($controller === 'dashboard') {
         .dark input::placeholder {
             color: #9E9E9E !important;
         }
-        
-        /* Ajuste para el efecto glass en modo oscuro */
-        .dark .glass-nav {
-            background: rgba(18, 18, 18, 0.8);
-        }
     </style>
 </head>
-
-<body class="text-on-surface bg-background overflow-hidden h-screen flex flex-col">
-
-    <!-- CONTENIDO PRINCIPAL -->
-    <main class="flex-1 pt-16 flex flex-col overflow-hidden pb-20 md:pb-0">
