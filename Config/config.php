@@ -1,5 +1,5 @@
 <?php
-define('BASE_URL', 'http://localhost/proyectos/UnioApp/');
+define('BASE_URL', 'http://localhost/proyectos/UnioAppMensajes/');
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'unioapp');
 define('DB_USER', 'root');

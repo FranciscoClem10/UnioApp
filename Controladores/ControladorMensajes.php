@@ -1,195 +1,43 @@
 <?php
-require_once 'Modelos/ModeloUsuario.php';
 require_once 'Modelos/ModeloMensaje.php';
-require_once 'Modelos/ModeloNotificacion.php';
-require_once 'Modelos/ModeloMensajeGrupo.php';
 require_once 'Modelos/ModeloActividad.php';
+require_once 'Modelos/ModeloUsuario.php';
 
 class ControladorMensajes {
+    private $modeloMensaje;
+    private $modeloActividad;
+    private $modeloUsuario;
 
-    // MÉTODO chats
+    public function __construct() {
+        $this->modeloMensaje   = new ModeloMensaje();
+        $this->modeloActividad = new ModeloActividad();
+        $this->modeloUsuario   = new ModeloUsuario();
+    }
+
+    // Página de lista de conversaciones (chats)
     public function chats() {
-        if (!isset($_SESSION['usuario_id'])) {
-            header('Location: ' . BASE_URL . '?c=login');
-            exit;
-        }
-        $id_usuario = $_SESSION['usuario_id'];
+		if (!isset($_SESSION['usuario_id'])) {
+			header('Location: ' . BASE_URL . '?c=login');
+			exit;
+		}
+		$id_usuario = $_SESSION['usuario_id'];
 
-        // Modelos
-        $modeloMensaje = new ModeloMensaje();
-        $modeloMensajeGrupo = new ModeloMensajeGrupo();
+		// Cargar modelos necesarios
+		require_once 'Modelos/ModeloMensaje.php';
+		require_once 'Modelos/ModeloUsuario.php';
+		$modeloMensaje = new ModeloMensaje();
+		$modeloUsuario = new ModeloUsuario();
 
-        // Obtener conversaciones privadas
-        $conversacionesPrivadas = $modeloMensaje->obtenerConversaciones($id_usuario);
+		// Obtener conversaciones de actividades
+		$conversacionesActividad = $modeloMensaje->obtenerConversacionesActividad($id_usuario);
 
-        // Obtener conversaciones de actividades
-        $conversacionesActividad = $modeloMensajeGrupo->obtenerConversacionesActividad($id_usuario);
+		// Obtener conversaciones privadas (implementa similar si es necesario)
+		$conversacionesPrivadas = $this->obtenerConversacionesPrivadas($id_usuario);
 
-        // --- NUEVO: Obtener lista de amigos (aceptados) ---
-        $db = Database::getConexion();
-        $stmt = $db->prepare("
-            SELECT u.id_usuario, u.nombre, u.apellido_paterno, u.apellido_materno, u.foto_perfil, u.ultima_conexion,
-                CONCAT(u.nombre, ' ', u.apellido_paterno, ' ', u.apellido_materno) AS nombre_completo
-            FROM usuarios u
-            INNER JOIN amistades a ON (a.id_solicitante = u.id_usuario OR a.id_receptor = u.id_usuario)
-            WHERE (a.id_solicitante = :id AND a.id_receptor = u.id_usuario
-                OR a.id_receptor = :id AND a.id_solicitante = u.id_usuario)
-            AND a.estado = 'aceptado'
-            AND u.id_usuario != :id
-            AND u.activo = 1
-            ORDER BY u.nombre ASC
-        ");
-        $stmt->execute([':id' => $id_usuario]);
-        $amigos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		require_once 'Vistas/Mensajes/chats.php';
+	}
 
-        // Procesar foto_base64 para cada amigo
-        foreach ($amigos as &$a) {
-            if (!empty($a['foto_perfil'])) {
-                $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                $mime = finfo_buffer($finfo, $a['foto_perfil']);
-                finfo_close($finfo);
-                $a['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($a['foto_perfil']);
-            } else {
-                $a['foto_base64'] = null;
-            }
-            $a['online'] = (strtotime($a['ultima_conexion'] ?? '2000-01-01') > time() - 300);
-        }
-
-        require_once 'Vistas/Mensajes/chats.php';
-    }
-
-    // MÉTODOS PARA MENSAJES PRIVADOS
-    public function verPrivado() {
-        if (!isset($_SESSION['usuario_id'])) {
-            header('Location: ' . BASE_URL);
-            exit;
-        }
-        $destinatarioId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-        if (!$destinatarioId) {
-            header('Location: ' . BASE_URL . '?c=mensajes&a=chats');
-            exit;
-        }
-
-        // Verificar amistad
-        $db = Database::getConexion();
-        $stmt = $db->prepare("SELECT 1 FROM amistades WHERE ((id_solicitante = :id1 AND id_receptor = :id2) OR (id_solicitante = :id2 AND id_receptor = :id1)) AND estado = 'aceptado'");
-        $stmt->execute([':id1' => $_SESSION['usuario_id'], ':id2' => $destinatarioId]);
-        if (!$stmt->fetchColumn()) {
-            die("No eres amigo de este usuario.");
-        }
-
-        // Marcar notificaciones como leídas
-        $modeloNotif = new ModeloNotificacion();
-        $modeloNotif->marcarLeidasPorContexto($_SESSION['usuario_id'], 'mensaje_privado', $destinatarioId);
-
-        // Datos del destinatario
-        $modeloUsuario = new ModeloUsuario();
-        $destinatario = $modeloUsuario->obtenerPorId($destinatarioId);
-        if (!$destinatario) {
-            header('Location: ' . BASE_URL . '?c=mensajes&a=chats');
-            exit;
-        }
-
-        // Convertir foto a base64
-        if (!empty($destinatario['foto_perfil'])) {
-            $finfo = finfo_open(FILEINFO_MIME_TYPE);
-            $mime = finfo_buffer($finfo, $destinatario['foto_perfil']);
-            finfo_close($finfo);
-            $destinatario['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($destinatario['foto_perfil']);
-        } else {
-            $destinatario['foto_base64'] = null;
-        }
-
-        $destinatario['online'] = (strtotime($destinatario['ultima_conexion'] ?? '2000-01-01') > time() - 300);
-        $modeloUsuario->actualizarUltimaConexion($_SESSION['usuario_id']);
-
-        require_once 'Vistas/Mensajes/verPrivado.php';
-    }
-
-    /** Endpoint AJAX: obtener mensajes privados (antes "obtener") */
-    public function obtenerMensajesPrivados() {
-        if (!isset($_SESSION['usuario_id'])) {
-            http_response_code(401);
-            echo json_encode(['error' => 'No autorizado']);
-            exit;
-        }
-        $destinatarioId = isset($_GET['destinatario_id']) ? (int)$_GET['destinatario_id'] : 0;
-        $lastId = isset($_GET['last_id']) ? (int)$_GET['last_id'] : 0;
-        if (!$destinatarioId) {
-            echo json_encode(['error' => 'Falta destinatario']);
-            exit;
-        }
-        $modelo = new ModeloMensaje();
-        $mensajes = $modelo->obtenerMensajes($_SESSION['usuario_id'], $destinatarioId, $lastId);
-
-        $idsNoLeidos = [];
-        foreach ($mensajes as &$m) {
-            if ($m['id_destinatario'] == $_SESSION['usuario_id'] && $m['leido'] == 0) {
-                $idsNoLeidos[] = $m['id_mensaje'];
-                $m['leido'] = 1;
-            }
-        }
-        if (!empty($idsNoLeidos)) {
-            $modelo->marcarComoLeidos($_SESSION['usuario_id'], $idsNoLeidos);
-        }
-        header('Content-Type: application/json');
-        echo json_encode(['mensajes' => $mensajes]);
-    }
-
-    /** Endpoint AJAX: enviar mensaje privado (antes "enviar") */
-    public function enviarMensajePrivado() {
-        if (!isset($_SESSION['usuario_id'])) {
-            http_response_code(401);
-            echo json_encode(['error' => 'No autorizado']);
-            exit;
-        }
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            http_response_code(405);
-            exit;
-        }
-        $destinatarioId = isset($_POST['destinatario_id']) ? (int)$_POST['destinatario_id'] : 0;
-        $contenido = trim($_POST['contenido'] ?? '');
-        if (!$destinatarioId || !$contenido) {
-            echo json_encode(['error' => 'Datos inválidos']);
-            exit;
-        }
-        $modelo = new ModeloMensaje();
-        $resultado = $modelo->enviarMensaje($_SESSION['usuario_id'], $destinatarioId, $contenido);
-        if ($resultado) {
-            $modeloNotif = new ModeloNotificacion();
-            $remitente = (new ModeloUsuario())->obtenerPorId($_SESSION['usuario_id']);
-            $nombreRemitente = $remitente['nombre_completo'] ?? $remitente['nombre'];
-            $modeloNotif->crear(
-                $destinatarioId,
-                'mensaje_privado',
-                'Nuevo mensaje de ' . $nombreRemitente,
-                substr($contenido, 0, 100),
-                '?c=mensajes&a=verPrivado&id=' . $_SESSION['usuario_id']
-            );
-            echo json_encode(['success' => true] + $resultado);
-        } else {
-            echo json_encode(['error' => 'No se pudo enviar el mensaje']);
-        }
-    }
-
-    /** Eliminar mensaje privado (AJAX) - se mantiene nombre único */
-    public function eliminarMensajePrivado() {
-        if (!isset($_SESSION['usuario_id'])) {
-            http_response_code(401);
-            echo json_encode(['error' => 'No autorizado']);
-            exit;
-        }
-        $id_mensaje = (int)($_GET['id'] ?? 0);
-        if (!$id_mensaje) {
-            echo json_encode(['error' => 'ID inválido']);
-            exit;
-        }
-        $modelo = new ModeloMensaje();
-        $exito = $modelo->eliminarMensajePrivado($id_mensaje, $_SESSION['usuario_id']);
-        echo json_encode(['success' => $exito]);
-    }
-
-    // MÉTODOS PARA MENSAJES DE ACTIVIDADES / GRUPOS
+    // Ver chat de actividad
     public function verActividad() {
         if (!isset($_SESSION['usuario_id'])) {
             header('Location: ' . BASE_URL . '?c=login');
@@ -197,27 +45,29 @@ class ControladorMensajes {
         }
         $id_usuario = $_SESSION['usuario_id'];
         $id_actividad = $_GET['id'] ?? 0;
+
         if (!$id_actividad) {
             header('Location: ' . BASE_URL . '?c=mensajes&a=chats');
             exit;
         }
 
-        $modeloActividad = new ModeloActividad();
-        if (!$modeloActividad->esParticipanteActivo($id_actividad, $id_usuario)) {
+        // Verificar que el usuario es participante aceptado
+        if (!$this->modeloActividad->esParticipanteActivo($id_actividad, $id_usuario)) {
             die("No tienes permiso para acceder a este chat.");
         }
 
-        $actividad = $modeloActividad->obtenerPorId($id_actividad);
-        $participantes = $modeloActividad->obtenerParticipantes($id_actividad);
-        $modeloMensajeGrupo = new ModeloMensajeGrupo();
-        $mensajes = $modeloMensajeGrupo->obtenerMensajesActividad($id_actividad);
-        $modeloMensajeGrupo->marcarLeidosActividad($id_actividad, $id_usuario);
+        $actividad = $this->modeloActividad->obtenerPorId($id_actividad);
+        $participantes = $this->modeloActividad->obtenerParticipantes($id_actividad);
+        $mensajes = $this->modeloMensaje->obtenerMensajesActividad($id_actividad);
+
+        // Marcar mensajes como leídos al entrar
+        $this->modeloMensaje->marcarLeidosActividad($id_actividad, $id_usuario);
 
         require_once 'Vistas/Mensajes/verActividad.php';
     }
 
-    /** Endpoint AJAX: obtener nuevos mensajes de actividad (antes obtenerNuevos) */
-    public function obtenerNuevosMensajesActividad() {
+    // API: Obtener nuevos mensajes (JSON)
+    public function obtenerNuevos() {
         header('Content-Type: application/json');
         if (!isset($_SESSION['usuario_id'])) {
             echo json_encode(['error' => 'No autenticado']);
@@ -227,19 +77,17 @@ class ControladorMensajes {
         $id_actividad = $_GET['id_actividad'] ?? 0;
         $ultimo_id = $_GET['ultimo_id'] ?? 0;
 
-        $modeloActividad = new ModeloActividad();
-        if (!$id_actividad || !$modeloActividad->esParticipanteActivo($id_actividad, $id_usuario)) {
+        if (!$id_actividad || !$this->modeloActividad->esParticipanteActivo($id_actividad, $id_usuario)) {
             echo json_encode(['error' => 'Acceso denegado']);
             exit;
         }
 
-        $modeloMensajeGrupo = new ModeloMensajeGrupo();
-        $nuevos = $modeloMensajeGrupo->obtenerNuevosMensajes($id_actividad, $ultimo_id);
+        $nuevos = $this->modeloMensaje->obtenerNuevosMensajes($id_actividad, $ultimo_id);
         echo json_encode(['mensajes' => $nuevos]);
     }
 
-    /** Endpoint AJAX: enviar mensaje a actividad (antes enviar) */
-    public function enviarMensajeActividad() {
+    // API: Enviar mensaje (POST)
+    public function enviar() {
         header('Content-Type: application/json');
         if (!isset($_SESSION['usuario_id'])) {
             echo json_encode(['error' => 'No autenticado']);
@@ -259,19 +107,31 @@ class ControladorMensajes {
             exit;
         }
 
-        $modeloActividad = new ModeloActividad();
-        if (!$modeloActividad->esParticipanteActivo($id_actividad, $id_usuario)) {
+        if (!$this->modeloActividad->esParticipanteActivo($id_actividad, $id_usuario)) {
             echo json_encode(['error' => 'No puedes enviar mensajes a esta actividad']);
             exit;
         }
 
-        $modeloMensajeGrupo = new ModeloMensajeGrupo();
-        $exito = $modeloMensajeGrupo->enviarMensaje($id_actividad, $id_usuario, $contenido);
+        $exito = $this->modeloMensaje->enviarMensaje($id_actividad, $id_usuario, $contenido);
         if ($exito) {
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['error' => 'Error al guardar el mensaje']);
         }
     }
+
+    // Ver chat privado (placeholder)
+    public function verPrivado() {
+        // Implementación similar para mensajes_privados
+    }
+
+    // Métodos auxiliares para obtener conversaciones (pueden ir en modelos dedicados)
+    private function obtenerConversacionesActividad($id_usuario) {
+        // Implementación según lo que ya tengas en tu chats.php
+        return [];
+    }
+
+    private function obtenerConversacionesPrivadas($id_usuario) {
+        return [];
+    }
 }
-?>
