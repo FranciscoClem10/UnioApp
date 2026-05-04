@@ -25,12 +25,26 @@
 		'física y deportiva': '#ff9800',
 		'entretenimiento y ocio': '#3f51b5',
 		'intelectual y cultural': '#795548',
-		'default': '#5a2af7'
+		'default': '#ab1ce4'
 	};
 
 	function getSvgIcon(color) {
 		return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" fill="${color}"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`;
 	}
+
+function getSvgIconUser(color) {
+	return `
+	<svg xmlns="http://www.w3.org/2000/svg" 
+		 viewBox="0 0 24 24" 
+		 width="28" 
+		 height="28" 
+		 fill="${color}">
+		 
+		<path d="M12 12c2.67 0 8 1.34 8 4v2H4v-2c0-2.66 5.33-4 8-4zm0-2
+				 a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
+	</svg>
+	`;
+}
 
 	function getIconForCategoria(categoria) {
 		const catKey = categoria.toLowerCase();
@@ -45,7 +59,7 @@
 
 	const userIcon = L.divIcon({
 		className: 'user-marker-icon',
-		html: getSvgIcon('#2196F3'),
+		html: getSvgIconUser('#5a2af7'),
 		iconSize: [28, 28],
 		popupAnchor: [0, -14]
 	});
