@@ -82,6 +82,19 @@ $notificacionesNoLeidas = $modeloNotif->contarNoLeidas($_SESSION['usuario_id']);
         .dark .bg-surface-container {
             background-color: #121212 !important;
         }
+
+        .layer-dropdown-html input[type="radio"] {
+            color: #5a2af7 !important; /* color por defecto (claro) */
+        }
+        .dark .layer-dropdown-html input[type="radio"] {
+            color: #5a2af7 !important; /* color en modo oscuro */
+        }
+
+        @media (max-width: 768px) {
+            #btnCapas {
+                bottom: 5rem !important; 
+            }
+        }
     </style>
 
 <?php include 'includes/top-nav.php'; ?>
@@ -185,6 +198,10 @@ $notificacionesNoLeidas = $modeloNotif->contarNoLeidas($_SESSION['usuario_id']);
                 </a>
             </div>
         </div>
+
+        <button id="btnCapas" class="absolute bottom-4 left-4 w-12 h-12 glass-card rounded-xl shadow-lg flex items-center justify-center text-on-surface active:scale-95 transition-colors hover:bg-primary/20 z-20 pointer-events-auto">
+            <span class="material-symbols-outlined">layers</span>
+        </button>
     </div>
 </div>
 

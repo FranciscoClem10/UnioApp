@@ -19,8 +19,8 @@
 	];
 
 	let activeBaseLayer = null;
-	let layerMenuControl = null;
 
+	// Guardar estado del mapa (posición, zoom, capa) – se ejecuta siempre
 	function guardarEstadoMapa() {
 		if (!mapInstance) return;
 		const center = mapInstance.getCenter();
@@ -41,122 +41,110 @@
 		}).catch(e => console.warn('No se pudo guardar el estado del mapa', e));
 	}
 
-	const LayerMenuControl = L.Control.extend({
-		options: { position: 'bottomleft' },
-		onAdd: function(map) {
-			const container = L.DomUtil.create('div', 'layer-menu-control');
-			container.style.backgroundColor = modoOscuro ? '#0f0f0f' : '#ffffff';
-			container.style.color = modoOscuro ? '#e0e0e0' : '#1a1a1a';
-			container.style.borderRadius = '30px';
-			container.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
-			container.style.fontFamily = 'system-ui, sans-serif';
-			container.style.fontSize = '14px';
-			container.style.fontWeight = '500';
-			container.style.cursor = 'pointer';
-			container.style.padding = '6px 14px';
-			container.style.border = modoOscuro ? '1px solid #1e1e1e' : '1px solid #ccc';
-			container.style.transition = 'all 0.2s';
-			container.style.zIndex = '1000';
-
-			const button = L.DomUtil.create('div', 'layer-menu-button', container);
-			button.innerHTML = 'Capas';
-			button.style.display = 'flex';
-			button.style.alignItems = 'center';
-			button.style.gap = '6px';
-			button.style.userSelect = 'none';
-
-			const dropdown = L.DomUtil.create('div', 'layer-menu-dropdown', container);
-			dropdown.style.position = 'absolute';
-			dropdown.style.bottom = '100%';
-			dropdown.style.left = '0';
-			dropdown.style.marginBottom = '8px';
-			dropdown.style.backgroundColor = modoOscuro ? '#1e1e1e' : '#f9f9f9';
-			dropdown.style.borderRadius = '16px';
-			dropdown.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
-			dropdown.style.padding = '10px 0';
-			dropdown.style.minWidth = '180px';
-			dropdown.style.border = modoOscuro ? '1px solid #1e1e1e' : '1px solid #ddd';
-			dropdown.style.display = 'none';
-			dropdown.style.flexDirection = 'column';
-			dropdown.style.gap = '0';
-			dropdown.style.zIndex = '1100';
-
-			baseLayers.forEach((layer) => {
-				const label = L.DomUtil.create('label', 'layer-option', dropdown);
-				label.style.display = 'flex';
-				label.style.alignItems = 'center';
-				label.style.gap = '12px';
-				label.style.padding = '8px 16px';
-				label.style.cursor = 'pointer';
-				label.style.transition = 'background 0.15s';
-				label.style.fontWeight = '500';
-				label.style.color = modoOscuro ? '#e0e0e0' : '#1a1a1a';
-				label.onmouseenter = () => { label.style.backgroundColor = modoOscuro ? '#3a3a4a' : '#eef2f5'; };
-				label.onmouseleave = () => { label.style.backgroundColor = 'transparent'; };
-
-				const radio = L.DomUtil.create('input', '', label);
-				radio.type = 'radio';
-				radio.name = 'baseLayer';
-				radio.value = layer.id;
-				radio.style.width = '18px';
-				radio.style.height = '18px';
-				radio.style.cursor = 'pointer';
-				radio.style.accentColor = '#5a2af7';
-				radio.style.margin = '0';
-
-				const span = L.DomUtil.create('span', '', label);
-				span.innerText = layer.name;
-
-				radio.addEventListener('change', (e) => {
-					if (radio.checked) {
-						switchBaseLayer(layer.layer);
-						dropdown.style.display = 'none';
-					}
-				});
-			});
-
-			button.addEventListener('click', (e) => {
-				L.DomEvent.stopPropagation(e);
-				const isVisible = dropdown.style.display === 'flex';
-				dropdown.style.display = isVisible ? 'none' : 'flex';
-			});
-
-			const closeOnOutsideClick = (e) => {
-				if (!container.contains(e.target)) {
-					dropdown.style.display = 'none';
-				}
-			};
-			document.addEventListener('click', closeOnOutsideClick);
-
-			function syncRadioFromActiveLayer() {
-				let activeId = null;
-				if (activeBaseLayer === osmStandard) activeId = 'osm';
-				else if (activeBaseLayer === esriSatellite) activeId = 'esri';
-				else if (activeBaseLayer === cartoDark) activeId = 'dark';
-				else if (activeBaseLayer === cartoVoyager) activeId = 'light';
-				const radios = dropdown.querySelectorAll('input[type="radio"]');
-				radios.forEach(radio => {
-					radio.checked = (radio.value === activeId);
-				});
-			}
-
-			const originalSwitch = switchBaseLayer;
-			window.switchBaseLayer = function(newLayer) {
-				originalSwitch(newLayer);
-				syncRadioFromActiveLayer();
-				guardarEstadoMapa();
-			};
-			syncRadioFromActiveLayer();
-
-			return container;
-		}
-	});
-
+	// Cambio de capa (usado internamente y desde el menú)
 	function switchBaseLayer(newLayer) {
 		if (!mapInstance || activeBaseLayer === newLayer) return;
 		if (activeBaseLayer) mapInstance.removeLayer(activeBaseLayer);
 		mapInstance.addLayer(newLayer);
 		activeBaseLayer = newLayer;
+		guardarEstadoMapa(); // guardar cambio de capa
+	}
+
+	// Configurar el botón HTML de capas (esquina inferior izquierda)
+	function setupLayerButton() {
+		const btn = document.getElementById('btnCapas');
+		if (!btn) return;
+
+		const oldDropdown = btn.querySelector('.layer-dropdown-html');
+		if (oldDropdown) oldDropdown.remove();
+
+		const dropdown = document.createElement('div');
+		dropdown.className = 'layer-dropdown-html';
+		dropdown.style.position = 'absolute';
+		dropdown.style.bottom = '100%';
+		dropdown.style.left = '0';
+		dropdown.style.marginBottom = '8px';
+		dropdown.style.backgroundColor = modoOscuro ? '#1e1e1e' : '#f9f9f9';
+		dropdown.style.borderRadius = '16px';
+		dropdown.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+		dropdown.style.padding = '10px 0';
+		dropdown.style.minWidth = '180px';
+		dropdown.style.border = modoOscuro ? '1px solid #2a2a2a' : '1px solid #ddd';
+		dropdown.style.display = 'none';
+		dropdown.style.flexDirection = 'column';
+		dropdown.style.zIndex = '2000';
+		btn.appendChild(dropdown);
+
+		baseLayers.forEach(layer => {
+			const label = document.createElement('label');
+			label.style.display = 'flex';
+			label.style.alignItems = 'center';
+			label.style.gap = '12px';
+			label.style.padding = '8px 16px';
+			label.style.cursor = 'pointer';
+			label.style.fontWeight = '500';
+			label.style.color = modoOscuro ? '#e0e0e0' : '#1a1a1a';
+			label.onmouseenter = () => label.style.backgroundColor = modoOscuro ? '#3a3a4a' : '#eef2f5';
+			label.onmouseleave = () => label.style.backgroundColor = 'transparent';
+
+			const radio = document.createElement('input');
+			radio.type = 'radio';
+			radio.name = 'htmlBaseLayer';
+			radio.value = layer.id;
+			radio.style.width = '18px';
+			radio.style.height = '18px';
+			// dentro del forEach que crea los labels
+			radio.style.accentColor = modoOscuro ? '#BB86FC' : '#5a2af7';
+			radio.style.margin = '0';
+
+			const span = document.createElement('span');
+			span.textContent = layer.name;
+
+			label.appendChild(radio);
+			label.appendChild(span);
+			dropdown.appendChild(label);
+
+			// Hacer que todo el label active el radio button
+			label.addEventListener('click', (e) => {
+				// Si el clic no fue directamente sobre el input, lo activamos
+				if (e.target !== radio) {
+					radio.checked = true;
+					// Disparar el evento change manualmente
+					radio.dispatchEvent(new Event('change', { bubbles: true }));
+				}
+			});
+
+			radio.addEventListener('change', () => {
+				if (radio.checked) {
+					switchBaseLayer(layer.layer);
+					dropdown.style.display = 'none';
+					syncRadio();
+				}
+			});
+		});
+
+		function syncRadio() {
+			let activeId = null;
+			if (activeBaseLayer === osmStandard) activeId = 'osm';
+			else if (activeBaseLayer === esriSatellite) activeId = 'esri';
+			else if (activeBaseLayer === cartoDark) activeId = 'dark';
+			else if (activeBaseLayer === cartoVoyager) activeId = 'light';
+			const radios = dropdown.querySelectorAll('input[type="radio"]');
+			radios.forEach(r => r.checked = (r.value === activeId));
+		}
+
+		btn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			const isVisible = dropdown.style.display === 'flex';
+			dropdown.style.display = isVisible ? 'none' : 'flex';
+			if (!isVisible) syncRadio();
+		});
+
+		document.addEventListener('click', (e) => {
+			if (!btn.contains(e.target)) {
+				dropdown.style.display = 'none';
+			}
+		});
 	}
 
 	function actualizarMapa() {
@@ -204,9 +192,11 @@
 		mapInstance = L.map('map').setView([initialLat, initialLng], initialZoom);
 		activeBaseLayer.addTo(mapInstance);
 
+		// Guardar estado al mover el mapa (comportamiento original)
 		mapInstance.on('moveend', guardarEstadoMapa);
 
-		layerMenuControl = new LayerMenuControl().addTo(mapInstance);
+		// Inicializar el botón HTML de capas (sin controles Leaflet)
+		setupLayerButton();
 
 		function placeUserMarker(lat, lng, centerMap = false) {
 			if (userMarker) mapInstance.removeLayer(userMarker);
@@ -234,7 +224,7 @@
 		}
 
 		actualizarMapa();
-		guardarEstadoMapa();
+		guardarEstadoMapa(); // guardar estado inicial
 	}
 
 	function centrarEnMiUbicacion() {

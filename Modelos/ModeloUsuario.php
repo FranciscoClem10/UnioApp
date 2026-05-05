@@ -310,38 +310,103 @@ class ModeloUsuario {
         return $usuarios;
     }
 
-    public function obtenerUsuugeridos($id_usuario, $limite = 10) {
-        $sql = "SELECT u.id_usuario, u.nombre, u.apellido_paterno, u.apellido_materno, u.email, u.foto_perfil,
-                    CONCAT(u.nombre, ' ', u.apellido_paterno, ' ', u.apellido_materno) as nombre_completo
-                FROM usuarios u
-                WHERE u.activo = 1 
+   public function obtenerUsuugeridos($id_usuario, $limite = 10) {
+    // Obtener amigos confirmados
+    $sqlAmigos = "SELECT id_receptor AS amigo_id FROM amistades WHERE id_solicitante = :id AND estado = 'aceptado'
+                  UNION
+                  SELECT id_solicitante FROM amistades WHERE id_receptor = :id AND estado = 'aceptado'";
+    $stmtAmigos = $this->db->prepare($sqlAmigos);
+    $stmtAmigos->bindParam(':id', $id_usuario, PDO::PARAM_INT);
+    $stmtAmigos->execute();
+    $amigos = $stmtAmigos->fetchAll(PDO::FETCH_COLUMN);
+    $tieneAmigos = !empty($amigos);
+
+    // Subconsulta para contar amigos (popularidad)
+    $subQueryPopularidad = "(SELECT COUNT(*) FROM amistades 
+                            WHERE (id_solicitante = u.id_usuario OR id_receptor = u.id_usuario)
+                              AND estado = 'aceptado') AS num_amigos";
+
+    // Filtros comunes: activo, no soy yo, sin relación de amistad (cualquier estado), sin bloqueos
+    $filtros = "u.activo = 1 
                 AND u.id_usuario != :id_actual
                 AND NOT EXISTS (
-                    SELECT 1 FROM amistades a 
+                    SELECT 1 FROM amistades a
                     WHERE (a.id_solicitante = u.id_usuario AND a.id_receptor = :id_actual)
-                        OR (a.id_solicitante = :id_actual AND a.id_receptor = u.id_usuario)
+                       OR (a.id_solicitante = :id_actual AND a.id_receptor = u.id_usuario)
                 )
-                ORDER BY u.nombre ASC
+                AND NOT EXISTS (
+                    SELECT 1 FROM amistades b
+                    WHERE (b.id_solicitante = :id_actual AND b.id_receptor = u.id_usuario AND b.estado = 'bloqueado')
+                       OR (b.id_solicitante = u.id_usuario AND b.id_receptor = :id_actual AND b.estado = 'bloqueado')
+                )";
+
+    if ($tieneAmigos) {
+        // Generar placeholders nombrados para los amigos (ej. :amigo0, :amigo1, ...)
+        $placeholders = [];
+        foreach ($amigos as $i => $amigo) {
+            $placeholders[] = ":amigo$i";
+        }
+        $inQuery = implode(',', $placeholders);
+
+        // Consulta para amigos de amigos (segundo grado)
+        $sql = "SELECT u.id_usuario, u.nombre, u.apellido_paterno, u.apellido_materno, u.email, u.foto_perfil,
+                       CONCAT(u.nombre, ' ', u.apellido_paterno, ' ', u.apellido_materno) AS nombre_completo,
+                       $subQueryPopularidad
+                FROM usuarios u
+                WHERE u.id_usuario IN (
+                    SELECT DISTINCT 
+                        CASE 
+                            WHEN a.id_solicitante = f.amigo_id THEN a.id_receptor
+                            WHEN a.id_receptor = f.amigo_id THEN a.id_solicitante
+                        END
+                    FROM (
+                        SELECT $inQuery AS amigo_id
+                    ) AS f
+                    JOIN amistades a ON (a.id_solicitante = f.amigo_id OR a.id_receptor = f.amigo_id)
+                    WHERE a.estado = 'aceptado'
+                )
+                AND u.id_usuario NOT IN (" . implode(',', array_merge([":id_actual"], $placeholders)) . ")
+                AND $filtros
+                ORDER BY num_amigos DESC
+                LIMIT :limite";
+
+        $stmt = $this->db->prepare($sql);
+        // Vincular cada amigo a su placeholder
+        foreach ($amigos as $i => $amigoId) {
+            $stmt->bindValue(":amigo$i", $amigoId, PDO::PARAM_INT);
+        }
+        $stmt->bindParam(':id_actual', $id_usuario, PDO::PARAM_INT);
+        $stmt->bindParam(':limite', $limite, PDO::PARAM_INT);
+    } else {
+        // Sin amigos: recomendar usuarios populares (con muchos amigos)
+        $sql = "SELECT u.id_usuario, u.nombre, u.apellido_paterno, u.apellido_materno, u.email, u.foto_perfil,
+                       CONCAT(u.nombre, ' ', u.apellido_paterno, ' ', u.apellido_materno) AS nombre_completo,
+                       $subQueryPopularidad
+                FROM usuarios u
+                WHERE $filtros
+                ORDER BY num_amigos DESC
                 LIMIT :limite";
         $stmt = $this->db->prepare($sql);
         $stmt->bindParam(':id_actual', $id_usuario, PDO::PARAM_INT);
         $stmt->bindParam(':limite', $limite, PDO::PARAM_INT);
-        $stmt->execute();
-        $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        foreach ($usuarios as &$u) {
-            // foto base64 para mostrar en modal
-            if (!empty($u['foto_perfil'])) {
-                $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                $mime = finfo_buffer($finfo, $u['foto_perfil']);
-                finfo_close($finfo);
-                $u['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($u['foto_perfil']);
-            } else {
-                $u['foto_base64'] = null;
-            }
-        }
-        return $usuarios;
     }
+
+    $stmt->execute();
+    $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Convertir foto a base64
+    foreach ($usuarios as &$u) {
+        if (!empty($u['foto_perfil'])) {
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_buffer($finfo, $u['foto_perfil']);
+            finfo_close($finfo);
+            $u['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($u['foto_perfil']);
+        } else {
+            $u['foto_base64'] = null;
+        }
+    }
+    return $usuarios;
+}
 
     public function obtenerRechazados($id_usuario) {
         $sql = "SELECT u.id_usuario, u.nombre, u.apellido_paterno, u.apellido_materno, u.email, u.foto_perfil,
