@@ -30,7 +30,8 @@ class ModeloAjustes {
 		// Campos que siempre son enviados (selects)
 		$camposVisibilidad = [
 			'ubicacion_visibilidad', 'correo_visibilidad', 'foto_visibilidad',
-			'edad_visibilidad', 'perfil_visibilidad', 'actividades_visibilidad'
+			'edad_visibilidad', 'perfil_visibilidad', 'actividades_visibilidad',
+			'amigos_visibilidad'   // ← Nuevo campo
 		];
 
 		// Campos booleanos (checkboxes) – deben ser 1 o 0

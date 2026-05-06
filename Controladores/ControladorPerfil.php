@@ -1,40 +1,92 @@
 <?php
 require_once 'Modelos/ModeloUsuario.php';
+require_once 'Modelos/ModeloActividad.php';
 class ControladorPerfil {
-    public function index() {
-        if (!isset($_SESSION['usuario_id'])) {
-            header('Location: ' . BASE_URL . '?c=login');
-            exit;
-        }
-        $modelo = new ModeloUsuario();
-        $usuario = $modelo->obtenerPorId($_SESSION['usuario_id']);
-        if (!$usuario) {
-            session_destroy();
-            header('Location: ' . BASE_URL . '?c=login');
-            exit;
-        }
-        // Añadir campo 'apellidos' para compatibilidad con vistas
-        $usuario['apellidos'] = trim($usuario['apellido_paterno'] . ' ' . $usuario['apellido_materno']);
-        // Convertir foto a base64 si existe
-        if (!empty($usuario['foto_perfil'])) {
-            $finfo = finfo_open(FILEINFO_MIME_TYPE);
-            $mime = finfo_buffer($finfo, $usuario['foto_perfil']);
-            finfo_close($finfo);
-            $usuario['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($usuario['foto_perfil']);
-        } else {
-            $usuario['foto_base64'] = null;
-        }
-        $amigos = $modelo->obtenerAmigos($_SESSION['usuario_id']);
-        // Añadir 'apellidos' a cada amigo para compatibilidad
-        foreach ($amigos as &$amigo) {
-            $amigo['apellidos'] = trim($amigo['apellido_paterno'] . ' ' . $amigo['apellido_materno']);
-        }
-        $solicitudes = $modelo->obtenerSolicitudesPendientes($_SESSION['usuario_id']);
-        foreach ($solicitudes as &$sol) {
-            $sol['apellidos'] = trim($sol['apellido_paterno'] . ' ' . $sol['apellido_materno']);
-        }
-        require_once 'Vistas/Perfil/index.php';
-    }
+	public function index() {
+		if (!isset($_SESSION['usuario_id'])) {
+			header('Location: ' . BASE_URL . '?c=login');
+			exit;
+		}
+
+		$modeloUsuario = new ModeloUsuario();
+		$usuario = $modeloUsuario->obtenerPorId($_SESSION['usuario_id']);
+		if (!$usuario) {
+			session_destroy();
+			header('Location: ' . BASE_URL . '?c=login');
+			exit;
+		}
+
+		// Datos básicos del perfil
+		$usuario['apellidos'] = trim($usuario['apellido_paterno'] . ' ' . $usuario['apellido_materno']);
+		if (!empty($usuario['foto_perfil'])) {
+			$finfo = finfo_open(FILEINFO_MIME_TYPE);
+			$mime = finfo_buffer($finfo, $usuario['foto_perfil']);
+			finfo_close($finfo);
+			$usuario['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($usuario['foto_perfil']);
+		} else {
+			$usuario['foto_base64'] = null;
+		}
+
+		// Amigos (para estadística de conexiones)
+		$amigos = $modeloUsuario->obtenerAmigos($_SESSION['usuario_id']);
+		foreach ($amigos as &$amigo) {
+			$amigo['apellidos'] = trim($amigo['apellido_paterno'] . ' ' . $amigo['apellido_materno']);
+		}
+
+		// Solicitudes pendientes
+		$solicitudes = $modeloUsuario->obtenerSolicitudesPendientes($_SESSION['usuario_id']);
+		foreach ($solicitudes as &$sol) {
+			$sol['apellidos'] = trim($sol['apellido_paterno'] . ' ' . $sol['apellido_materno']);
+		}
+
+		// Intereses (preferencias)
+		$intereses_ids = $modeloUsuario->obtenerIntereses($_SESSION['usuario_id']);
+		$modeloActividad = new ModeloActividad();
+		$todos_tipos = $modeloActividad->obtenerTiposActividad();
+		$intereses_nombres = [];
+		foreach ($todos_tipos as $tipo) {
+			if (in_array($tipo['id_tipo'], $intereses_ids)) {
+				$intereses_nombres[] = $tipo['nombre_tipo'];
+			}
+		}
+
+		// Estadísticas
+		$total_amigos = count($amigos);
+		$total_actividades = $modeloActividad->contarActividadesParticipante($_SESSION['usuario_id']);
+
+		// Actividades del usuario (próximas y pasadas)
+		$actividades_proximas = $modeloActividad->obtenerActividadesPorParticipante($_SESSION['usuario_id'], 'proximas');
+		$actividades_pasadas = $modeloActividad->obtenerActividadesPorParticipante($_SESSION['usuario_id'], 'pasadas');
+
+		// Procesar foto de cada actividad (base64)
+		foreach ($actividades_proximas as &$act) {
+			if (!empty($act['foto_actividad'])) {
+				$finfo = finfo_open(FILEINFO_MIME_TYPE);
+				$mime = finfo_buffer($finfo, $act['foto_actividad']);
+				finfo_close($finfo);
+				$act['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($act['foto_actividad']);
+			} else {
+				$act['foto_base64'] = null;
+			}
+		}
+		unset($act); // romper referencia
+
+		// Procesar foto de cada actividad en pasadas
+		foreach ($actividades_pasadas as &$act) {
+			if (!empty($act['foto_actividad'])) {
+				$finfo = finfo_open(FILEINFO_MIME_TYPE);
+				$mime = finfo_buffer($finfo, $act['foto_actividad']);
+				finfo_close($finfo);
+				$act['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($act['foto_actividad']);
+			} else {
+				$act['foto_base64'] = null;
+			}
+		}
+		unset($act);
+
+		// Para la vista
+		require_once 'Vistas/Perfil/index.php';
+	}
 
 	public function editar() {
 		if (!isset($_SESSION['usuario_id'])) {
@@ -183,7 +235,7 @@ class ControladorPerfil {
                 $usr['apellidos'] = trim($usr['apellido_paterno'] . ' ' . $usr['apellido_materno']);
             }
         }
-        require_once 'Vistas/Perfil/nuevosAmigos.php';
+        require_once 'Vistas/Amigos/Index.php';
     }
 
     // Enviar solicitud de amistad (vía POST)

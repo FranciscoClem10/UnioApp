@@ -35,7 +35,13 @@ include 'includes/header.php';
     <!-- Tarjeta de la tabla (sin cambios, solo se adapta al flujo) -->
     <div class="bg-surface-container-lowest rounded-xl shadow-[0_8px_32px_rgba(45,47,47,0.06)] overflow-hidden">
         <div class="px-6 py-6 bg-surface-container-low flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-            <h2 class="text-xl font-bold text-on-surface">Historial de Actividades</h2>
+            <div class="mb-8 text-center md:text-left">
+				<h1 class="text-[3.5rem] font-extrabold tracking-tight text-on-surface leading-tight mb-4">
+					Edicion de
+					<span class="text-primary">Actividades</span>
+				</h1>
+				<p class="text-on-surface-variant max-w-xl">Edita tus actividades para tu comunidad.</p>
+			</div>
             <div class="flex gap-2">
                 <div class="relative flex items-center">
                     <span class="material-symbols-outlined absolute left-3 text-on-surface-variant text-lg">search</span>

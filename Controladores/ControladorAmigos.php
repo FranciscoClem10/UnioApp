@@ -201,34 +201,103 @@ class ControladorAmigos {
         exit;
     }
 
-    public function verPerfil() {
-        if (!isset($_SESSION['usuario_id'])) {
-            header('Location: ' . BASE_URL . '?c=login');
-            exit;
-        }
-        $id = (int)($_GET['id'] ?? 0);
-        if ($id <= 0) {
-            header('Location: ' . BASE_URL . '?c=dashboard');
-            exit;
-        }
-        $modelo = new ModeloUsuario();
-        $usuario = $modelo->obtenerPorId($id);
-        if (!$usuario) {
-            die("Usuario no encontrado");
-        }
-        // Añadir campo 'apellidos' para compatibilidad
-        $usuario['apellidos'] = trim($usuario['apellido_paterno'] . ' ' . $usuario['apellido_materno']);
-        // Convertir foto
-        if (!empty($usuario['foto_perfil'])) {
-            $finfo = finfo_open(FILEINFO_MIME_TYPE);
-            $mime = finfo_buffer($finfo, $usuario['foto_perfil']);
-            finfo_close($finfo);
-            $usuario['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($usuario['foto_perfil']);
-        }
-        // También podemos mostrar amigos comunes, etc.
-        require_once 'Vistas/Amigos/verPerfil.php';
-    }
+	public function verPerfil() {
+		if (!isset($_SESSION['usuario_id'])) {
+			header('Location: ' . BASE_URL . '?c=login');
+			exit;
+		}
+		$id_perfil = (int)($_GET['id'] ?? 0);
+		if ($id_perfil <= 0) {
+			header('Location: ' . BASE_URL . '?c=dashboard');
+			exit;
+		}
 
+		$modelo = new ModeloUsuario();
+		$usuario = $modelo->obtenerPorId($id_perfil);
+		if (!$usuario) {
+			die("Usuario no encontrado");
+		}
+
+		$nombreCompleto = trim($usuario['nombre'] . ' ' . $usuario['apellido_paterno'] . ' ' . $usuario['apellido_materno']);
+		$ajustes = $modelo->obtenerAjustes($id_perfil);  // asegura que trae el nuevo campo
+
+		$id_visitante = $_SESSION['usuario_id'];
+		$esPropietario = ($id_visitante == $id_perfil);
+		$relacion = null;
+		if (!$esPropietario) {
+			$relacion = $modelo->verificarAmistad($id_visitante, $id_perfil);
+		}
+
+		// --- Visibilidad global del perfil ---
+		$perfilVisible = false;
+		if ($esPropietario) {
+			$perfilVisible = true;
+		} else {
+			switch ($ajustes['perfil_visibilidad']) {
+				case 'todos':  $perfilVisible = true; break;
+				case 'amigos': $perfilVisible = ($relacion === 'aceptado'); break;
+				default:       $perfilVisible = false;
+			}
+		}
+		if (!$perfilVisible) {
+			require_once 'Vistas/Amigos/perfilPrivado.php';
+			exit;
+		}
+
+		// --- Visibilidad de campos individuales ---
+		$mostrarUbicacion   = $esPropietario || $ajustes['ubicacion_visibilidad'] === 'todos' || 
+							  ($ajustes['ubicacion_visibilidad'] === 'amigos' && $relacion === 'aceptado');
+		$mostrarCorreo      = $esPropietario || $ajustes['correo_visibilidad'] === 'todos' || 
+							  ($ajustes['correo_visibilidad'] === 'amigos' && $relacion === 'aceptado');
+		$mostrarEdad        = $esPropietario || $ajustes['edad_visibilidad'] === 'todos' || 
+							  ($ajustes['edad_visibilidad'] === 'amigos' && $relacion === 'aceptado');
+		$mostrarFoto        = $esPropietario || $ajustes['foto_visibilidad'] === 'todos' || 
+							  ($ajustes['foto_visibilidad'] === 'amigos' && $relacion === 'aceptado');
+		$mostrarActividades = $esPropietario || $ajustes['actividades_visibilidad'] === 'todos' || 
+							  ($ajustes['actividades_visibilidad'] === 'amigos' && $relacion === 'aceptado');
+		$mostrarAmigos      = $esPropietario || $ajustes['amigos_visibilidad'] === 'todos' || 
+							  ($ajustes['amigos_visibilidad'] === 'amigos' && $relacion === 'aceptado');
+
+		// --- Datos complementarios (solo se calculan si son necesarios) ---
+		$edad = null;
+		if ($mostrarEdad && !empty($usuario['fecha_nacimiento'])) {
+			$fecha = new DateTime($usuario['fecha_nacimiento']);
+			$hoy = new DateTime();
+			$edad = $hoy->diff($fecha)->y;
+		}
+
+		$intereses = $modelo->obtenerNombresIntereses($id_perfil);
+		$totalAmigos = $modelo->contarAmigos($id_perfil);       // se calcula pero se muestra solo si $mostrarAmigos
+		$totalActividades = $modelo->contarActividadesUsuario($id_perfil);
+
+		$actividadesProximas = [];
+		$actividadesPasadas = [];
+		if ($mostrarActividades) {
+			$actividadesProximas = $modelo->obtenerActividadesUsuario($id_perfil, 'proximas');
+			$actividadesPasadas = $modelo->obtenerActividadesUsuario($id_perfil, 'pasadas');
+		}
+
+		$fotoPerfilBase64 = null;
+		if ($mostrarFoto && !empty($usuario['foto_perfil'])) {
+			$finfo = finfo_open(FILEINFO_MIME_TYPE);
+			$mime = finfo_buffer($finfo, $usuario['foto_perfil']);
+			finfo_close($finfo);
+			$fotoPerfilBase64 = 'data:' . $mime . ';base64,' . base64_encode($usuario['foto_perfil']);
+		}
+
+		// Lista de amigos (solo si se permite mostrar)
+		$amigos = [];
+		if ($mostrarAmigos) {
+			$todosAmigos = $modelo->obtenerAmigos($id_perfil);
+			$amigos = array_slice($todosAmigos, 0, 4);
+		}
+
+		$puedeEnviarMensaje = ($relacion === 'aceptado');
+
+		require_once 'Vistas/Amigos/verPerfil.php';
+	}
+	
+	
     public function buscarUsuariosJson() {
         // Deshabilitar vistas de errores que puedan romper el JSON
         error_reporting(0);
@@ -309,5 +378,67 @@ class ControladorAmigos {
         }
         exit;
     }
+	
+	public function listaAmigos() {
+		if (!isset($_SESSION['usuario_id'])) {
+			header('Location: ' . BASE_URL . '?c=login');
+			exit;
+		}
+		$id_perfil = (int)($_GET['id'] ?? 0);
+		if ($id_perfil <= 0) {
+			header('Location: ' . BASE_URL . '?c=dashboard');
+			exit;
+		}
+
+		$modelo = new ModeloUsuario();
+		$usuario = $modelo->obtenerPorId($id_perfil);
+		if (!$usuario) {
+			die("Usuario no encontrado");
+		}
+
+		$nombreCompleto = trim($usuario['nombre'] . ' ' . $usuario['apellido_paterno'] . ' ' . $usuario['apellido_materno']);
+		$ajustes = $modelo->obtenerAjustes($id_perfil);
+
+		$id_visitante = $_SESSION['usuario_id'];
+		$esPropietario = ($id_visitante == $id_perfil);
+		$relacion = null;
+		if (!$esPropietario) {
+			$relacion = $modelo->verificarAmistad($id_visitante, $id_perfil);
+		}
+
+		// Determinar si puede ver la lista de amigos
+		$puedeVer = false;
+		if ($esPropietario) {
+			$puedeVer = true;
+		} else {
+			switch ($ajustes['amigos_visibilidad']) {
+				case 'todos':
+					$puedeVer = true;
+					break;
+				case 'amigos':
+					$puedeVer = ($relacion === 'aceptado');
+					break;
+				case 'nadie':
+				default:
+					$puedeVer = false;
+					break;
+			}
+		}
+
+		if (!$puedeVer) {
+			// Mostrar vista de privacidad o redirigir con mensaje
+			$_SESSION['error_amigos'] = "Este usuario ha restringido la visibilidad de su lista de amigos.";
+			header('Location: ' . BASE_URL . '?c=amigos&a=verPerfil&id=' . $id_perfil);
+			exit;
+		}
+
+		// Obtener lista completa de amigos
+		$amigos = $modelo->obtenerAmigos($id_perfil);
+		// También podríamos obtener el total de amigos para paginación, pero por ahora simple.
+
+		// También necesitamos la foto del perfil del dueño? Opcional.
+		// Pasar a la vista
+		require_once 'Vistas/Amigos/listaAmigos.php';
+	}
 }
 ?>

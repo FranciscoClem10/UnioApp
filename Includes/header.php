@@ -258,6 +258,16 @@ if ($controller === 'dashboard') {
         .dark .glass-nav {
             background: rgba(18, 18, 18, 0.8);
         }
+		
+		.contenido-principal {
+			padding-bottom: 80px; /* o 5rem */
+		}
+
+		@media (min-width: 768px) {
+			.contenido-principal {
+				padding-bottom: 0;
+			}
+		}
     </style>
 </head>
 

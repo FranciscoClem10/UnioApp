@@ -88,13 +88,14 @@ include(__DIR__ . "/../../Scripts/ajustesS.php");
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <?php
                         $visibilidades = [
-                            'ubicacion_visibilidad' => ['icono' => 'location_on', 'label' => 'Ubicación', 'desc' => 'Quién puede ver tu ubicación'],
-                            'correo_visibilidad'    => ['icono' => 'mail', 'label' => 'Correo electrónico', 'desc' => 'Quién puede ver tu email'],
-                            'foto_visibilidad'      => ['icono' => 'photo_camera', 'label' => 'Foto de perfil', 'desc' => 'Quién puede ver tu foto'],
-                            'edad_visibilidad'      => ['icono' => 'calendar_today', 'label' => 'Edad', 'desc' => 'Quién puede ver tu edad'],
-                            'perfil_visibilidad'    => ['icono' => 'account_circle', 'label' => 'Perfil completo', 'desc' => 'Quién puede ver tu perfil'],
-                            'actividades_visibilidad'=> ['icono' => 'event_list', 'label' => 'Actividades', 'desc' => 'Quién puede ver tus actividades'],
-                        ];
+							'ubicacion_visibilidad' => ['icono' => 'location_on', 'label' => 'Ubicación', 'desc' => 'Quién puede ver tu ubicación'],
+							'correo_visibilidad'    => ['icono' => 'mail', 'label' => 'Correo electrónico', 'desc' => 'Quién puede ver tu email'],
+							'foto_visibilidad'      => ['icono' => 'photo_camera', 'label' => 'Foto de perfil', 'desc' => 'Quién puede ver tu foto'],
+							'edad_visibilidad'      => ['icono' => 'calendar_today', 'label' => 'Edad', 'desc' => 'Quién puede ver tu edad'],
+							'perfil_visibilidad'    => ['icono' => 'account_circle', 'label' => 'Perfil completo', 'desc' => 'Quién puede ver tu perfil'],
+							'actividades_visibilidad'=> ['icono' => 'event_list', 'label' => 'Actividades', 'desc' => 'Quién puede ver tus actividades'],
+							'amigos_visibilidad'    => ['icono' => 'group', 'label' => 'Lista de amigos', 'desc' => 'Quién puede ver tu lista de amigos'], // ← Nueva
+						];
                         $opciones = ['nadie' => 'Nadie', 'amigos' => 'Solo amigos', 'todos' => 'Todos'];
                         foreach ($visibilidades as $campo => $info):
                             $actual = isset($ajustes[$campo]) ? $ajustes[$campo] : 'todos';

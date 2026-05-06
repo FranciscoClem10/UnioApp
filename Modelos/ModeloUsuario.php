@@ -502,5 +502,107 @@ class ModeloUsuario {
             ':id_bloqueado' => $id_bloqueado
         ]);
     }
+	
+	public function obtenerAjustes($usuario_id) {
+		$sql = "SELECT ubicacion_visibilidad, correo_visibilidad, foto_visibilidad, 
+					   edad_visibilidad, perfil_visibilidad, actividades_visibilidad,
+					   amigos_visibilidad   
+				FROM ajustes WHERE id_usuario = :id";
+		$stmt = $this->db->prepare($sql);
+		$stmt->execute([':id' => $usuario_id]);
+		$ajustes = $stmt->fetch(PDO::FETCH_ASSOC);
+		if (!$ajustes) {
+			// Valores por defecto incluyendo el nuevo campo
+			return [
+				'ubicacion_visibilidad' => 'todos',
+				'correo_visibilidad' => 'todos',
+				'foto_visibilidad' => 'todos',
+				'edad_visibilidad' => 'todos',
+				'perfil_visibilidad' => 'todos',
+				'actividades_visibilidad' => 'todos',
+				'amigos_visibilidad' => 'todos'
+			];
+		}
+		return $ajustes;
+	}
+
+	// Obtener nombres de intereses del usuario
+	public function obtenerNombresIntereses($usuario_id) {
+		$sql = "SELECT t.nombre_tipo 
+				FROM preferencias p
+				JOIN tipos_actividad t ON p.id_tipo = t.id_tipo
+				WHERE p.id_usuario = :uid";
+		$stmt = $this->db->prepare($sql);
+		$stmt->execute([':uid' => $usuario_id]);
+		return $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
+	}
+
+	// Contar amigos aceptados
+	public function contarAmigos($usuario_id) {
+		$sql = "SELECT COUNT(*) as total FROM (
+					SELECT id_solicitante FROM amistades WHERE id_receptor = :id AND estado = 'aceptado'
+					UNION
+					SELECT id_receptor FROM amistades WHERE id_solicitante = :id AND estado = 'aceptado'
+				) AS amigos";
+		$stmt = $this->db->prepare($sql);
+		$stmt->execute([':id' => $usuario_id]);
+		return (int)$stmt->fetch(PDO::FETCH_ASSOC)['total'];
+	}
+
+	// Contar actividades del usuario (creadas + participaciones aceptadas)
+	public function contarActividadesUsuario($usuario_id) {
+		$sql = "SELECT COUNT(DISTINCT a.id_actividad) as total
+				FROM actividades a
+				LEFT JOIN participantes p ON a.id_actividad = p.id_actividad AND p.id_usuario = :id AND p.estado = 'aceptado'
+				WHERE a.id_creador = :id OR p.id_usuario IS NOT NULL";
+		$stmt = $this->db->prepare($sql);
+		$stmt->execute([':id' => $usuario_id]);
+		return (int)$stmt->fetch(PDO::FETCH_ASSOC)['total'];
+	}
+
+	// Verificar relación de amistad entre dos usuarios
+	public function verificarAmistad($id1, $id2) {
+		$sql = "SELECT estado FROM amistades 
+				WHERE (id_solicitante = :id1 AND id_receptor = :id2)
+				   OR (id_solicitante = :id2 AND id_receptor = :id1)";
+		$stmt = $this->db->prepare($sql);
+		$stmt->execute([':id1' => $id1, ':id2' => $id2]);
+		$result = $stmt->fetch(PDO::FETCH_ASSOC);
+		return $result ? $result['estado'] : null;
+	}
+
+	// Obtener actividades del usuario (próximas o pasadas)
+	public function obtenerActividadesUsuario($usuario_id, $tipo = 'proximas') {
+		$condicionFecha = ($tipo === 'proximas') ? "a.fecha_fin >= NOW()" : "a.fecha_fin < NOW()";
+		$sql = "SELECT a.*, 
+					   CONCAT(u.nombre, ' ', u.apellido_paterno) AS nombre_creador,
+					   CASE 
+						   WHEN a.estado = 'en_curso' THEN 'En curso'
+						   WHEN a.fecha_inicio > NOW() THEN 'Por iniciar'
+						   ELSE 'Finalizada'
+					   END AS estado_visual
+				FROM actividades a
+				JOIN usuarios u ON a.id_creador = u.id_usuario
+				WHERE (a.id_creador = :id 
+					   OR a.id_actividad IN (SELECT id_actividad FROM participantes WHERE id_usuario = :id AND estado = 'aceptado'))
+				  AND $condicionFecha
+				ORDER BY a.fecha_inicio ASC";
+		$stmt = $this->db->prepare($sql);
+		$stmt->execute([':id' => $usuario_id]);
+		$actividades = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		
+		// Convertir foto_actividad (BLOB) a base64 si existe
+		foreach ($actividades as &$act) {
+			if (!empty($act['foto_actividad'])) {
+				$finfo = finfo_open(FILEINFO_MIME_TYPE);
+				$mime = finfo_buffer($finfo, $act['foto_actividad']);
+				finfo_close($finfo);
+				$act['foto_base64'] = 'data:' . $mime . ';base64,' . base64_encode($act['foto_actividad']);
+			} else {
+				$act['foto_base64'] = null;
+			}
+		}
+		return $actividades;
+	}
 }
 ?>

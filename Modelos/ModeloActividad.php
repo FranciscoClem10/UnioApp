@@ -404,6 +404,60 @@ class ModeloActividad {
         $stmt->execute([':id' => $id_actividad]);
         return (int)$stmt->fetchColumn();
     }
+	
+	public function contarActividadesParticipante($id_usuario) {
+    $sql = "SELECT COUNT(DISTINCT p.id_actividad)
+            FROM participantes p
+            INNER JOIN actividades a ON p.id_actividad = a.id_actividad
+            WHERE p.id_usuario = :id 
+              AND p.estado = 'aceptado'
+              AND p.rol = 'miembro'
+              AND a.estado NOT IN ('cancelada')";
+    $stmt = $this->db->prepare($sql);
+    $stmt->execute([':id' => $id_usuario]);
+    return (int)$stmt->fetchColumn();
+}
+
+public function obtenerActividadesPorParticipante($id_usuario, $tipo = 'todas') {
+    $params = [':usuario_id' => $id_usuario];
+
+    $sqlBase = "SELECT a.id_actividad, a.nombre, a.descripcion,
+                       a.limite_participantes_min, a.limite_participantes_max,
+                       a.fecha_inicio, a.fecha_fin, a.privacidad, a.estado,
+                       a.foto_actividad, a.id_creador,
+                       ta.nombre_tipo AS categoria,
+                       CONCAT_WS(' ', u.nombre, u.apellido_paterno, u.apellido_materno) AS creador_nombre
+                FROM participantes p
+                INNER JOIN actividades a ON p.id_actividad = a.id_actividad
+                INNER JOIN tipos_actividad ta ON a.id_tipo = ta.id_tipo
+                INNER JOIN usuarios u ON a.id_creador = u.id_usuario
+                WHERE p.id_usuario = :usuario_id 
+                  AND p.estado = 'aceptado'
+                  AND p.rol = 'miembro'";
+
+    // Filtro según tipo
+    if ($tipo === 'proximas') {
+        $sqlBase .= " AND (a.estado IN ('pendiente','en_curso') AND a.fecha_fin >= NOW())";
+        $sqlBase .= " ORDER BY a.fecha_inicio ASC";
+    } elseif ($tipo === 'pasadas') {
+        $sqlBase .= " AND (a.estado = 'finalizada' OR a.fecha_fin < NOW())";
+        $sqlBase .= " ORDER BY a.fecha_fin DESC";
+    } else {
+        $sqlBase .= " ORDER BY a.fecha_inicio DESC";
+    }
+
+    $stmt = $this->db->prepare($sqlBase);
+    $stmt->execute($params);
+    $actividades = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Formatear fechas
+    foreach ($actividades as &$act) {
+        $act['fecha_inicio_formateada'] = date('d M, Y · H:i', strtotime($act['fecha_inicio']));
+        $act['fecha_fin_formateada'] = date('d M, Y · H:i', strtotime($act['fecha_fin']));
+    }
+
+    return $actividades;
+}
 
 }
 ?>

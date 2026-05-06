@@ -37,7 +37,7 @@ function getOld($field, $default = '') {
         <div class="mb-8 text-center md:text-left">
             <h1 class="text-[3.5rem] font-extrabold tracking-tight text-on-surface leading-tight mb-4">
                 Crear
-                <span class="text-primary italic">Actividad</span>
+                <span class="text-primary">Actividad</span>
             </h1>
             <p class="text-on-surface-variant max-w-xl">Diseña una experiencia única para tu comunidad.</p>
         </div>
