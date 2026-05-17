@@ -274,4 +274,4 @@ if ($controller === 'dashboard') {
 <body class="text-on-surface bg-background overflow-hidden h-screen flex flex-col">
 
     <!-- CONTENIDO PRINCIPAL -->
-    <main class="flex-1 pt-16 flex flex-col overflow-hidden pb-20 md:pb-0">
+    <main class="flex-1 pt-16 flex flex-col overflow-y-auto pb-20 md:pb-0">

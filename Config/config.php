@@ -1,5 +1,6 @@
 <?php
 define('BASE_URL', 'http://localhost/proyectos/UnioApp/');
+define('ROOT_PATH', dirname(__DIR__));
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'unioapp');
 define('DB_USER', 'root');

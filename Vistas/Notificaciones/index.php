@@ -4,16 +4,13 @@ if (!isset($_SESSION['usuario_id'])) {
     header('Location: ' . BASE_URL . '?c=login');
     exit;
 }
-require_once __DIR__ . '/../../includes/header.php'; 
+require_once __DIR__ . '/../../includes/header.php';
 ?>
 
-<!-- Ajustamos el body para que ocupe toda la pantalla y el scroll se maneje dentro del main -->
 <body class="bg-background text-on-surface antialiased h-screen overflow-hidden flex flex-col">
-    <?php require_once __DIR__ . '/../../includes/top-nav.php';?>
+    <?php require_once __DIR__ . '/../../includes/top-nav.php'; ?>
 
-    <!-- Contenido principal: scrollable (siempre con scrollbar visible a la derecha) -->
-    <main class="flex-1 overflow-y-scroll pt-20 pb-20 md:pb-12 px-4 md:px-6 max-w-4xl mx-auto w-full" id ="scroll">
-        <!-- Cabecera con acciones: ahora los botones van debajo del título con separación -->
+    <main class="flex-1 overflow-y-scroll pt-20 pb-20 md:pb-12 px-4 md:px-6 max-w-4xl mx-auto w-full" id="scroll">
         <div class="mb-8 flex flex-col">
             <div class="mb-4">
                 <h1 class="text-[3.5rem] font-extrabold tracking-tight text-on-surface leading-tight mb-4">
@@ -41,12 +38,10 @@ require_once __DIR__ . '/../../includes/header.php';
             </div>
         <?php else: ?>
             <?php
-            // Ordenar todas las notificaciones por fecha descendente (más recientes primero)
-            usort($notificaciones, function($a, $b) {
+            usort($notificaciones, function ($a, $b) {
                 return strtotime($b['fecha_creacion']) - strtotime($a['fecha_creacion']);
             });
 
-            // Agrupar por fecha (Hoy, Ayer, Esta semana, Anteriores)
             $hoy = date('Y-m-d');
             $ayer = date('Y-m-d', strtotime('-1 day'));
             $semana = date('Y-m-d', strtotime('-7 days'));
@@ -66,7 +61,6 @@ require_once __DIR__ . '/../../includes/header.php';
                 else $grupos['Anteriores'][] = $n;
             }
 
-            // Función para determinar icono según título/contenido
             function getNotifIcon($titulo, $contenido) {
                 $texto = strtolower($titulo . ' ' . $contenido);
                 if (strpos($texto, 'evento') !== false) return 'event';
@@ -79,25 +73,22 @@ require_once __DIR__ . '/../../includes/header.php';
             foreach ($grupos as $nombre => $notis):
                 if (empty($notis)) continue;
 
-                // Separar leídas y no leídas dentro del grupo
-                $noLeidas = array_filter($notis, function($n) { return !$n['leida']; });
-                $leidas = array_filter($notis, function($n) { return $n['leida']; });
-
-                // Ordenar cada subgrupo por fecha descendente (ya lo están por el usort global, pero aseguramos)
-                usort($noLeidas, function($a, $b) {
-                    return strtotime($b['fecha_creacion']) - strtotime($a['fecha_creacion']);
+                $noLeidas = array_filter($notis, function ($n) {
+                    return !$n['leida'];
                 });
-                usort($leidas, function($a, $b) {
-                    return strtotime($b['fecha_creacion']) - strtotime($a['fecha_creacion']);
+                $leidas = array_filter($notis, function ($n) {
+                    return $n['leida'];
                 });
 
-                // Limitar leídas a las 10 más recientes
+                usort($noLeidas, function ($a, $b) {
+                    return strtotime($b['fecha_creacion']) - strtotime($a['fecha_creacion']);
+                });
+                usort($leidas, function ($a, $b) {
+                    return strtotime($b['fecha_creacion']) - strtotime($a['fecha_creacion']);
+                });
+
                 $leidasLimitadas = array_slice($leidas, 0, 5);
-
-                // Combinar: primero no leídas, luego leídas limitadas
                 $notisFiltradas = array_merge($noLeidas, $leidasLimitadas);
-
-                // Si después del filtro no quedan elementos, saltamos el grupo
                 if (empty($notisFiltradas)) continue;
             ?>
                 <div class="mt-6 first:mt-0">
@@ -108,27 +99,45 @@ require_once __DIR__ . '/../../includes/header.php';
                     <div class="space-y-3">
                         <?php foreach ($notisFiltradas as $n): ?>
                             <div class="notification-card group relative bg-surface-container-lowest p-4 md:p-5 rounded-xl shadow-[0_4px_16px_rgba(45,47,47,0.04)] hover:shadow-[0_12px_32px_rgba(45,47,47,0.08)] transition-all duration-300 flex items-start gap-4 border border-transparent hover:border-outline-variant/10 <?= $n['leida'] ? 'opacity-80' : '' ?>">
-                                <!-- Icono / Avatar -->
+                                <!-- Icono -->
                                 <div class="w-12 h-12 rounded-xl shrink-0 bg-primary-container/20 flex items-center justify-center text-primary">
                                     <span class="material-symbols-outlined text-2xl"><?= getNotifIcon($n['titulo'], $n['contenido']) ?></span>
                                 </div>
-                                
+
                                 <!-- Contenido -->
-                                <div class="flex-1 min-w-0">
+                                <?php if ($n['tipo'] != 'solicitud_amistad' && !empty($n['enlace'])): ?>
+                                    <a href="<?= BASE_URL ?>?c=notificacion&a=click&id=<?= $n['id_notificacion'] ?>" class="flex-1 min-w-0">
+                                <?php else: ?>
+                                    <div class="flex-1 min-w-0">
+                                <?php endif; ?>
+
                                     <div class="flex flex-wrap items-baseline justify-between gap-2">
                                         <h3 class="text-on-surface font-bold text-base"><?= htmlspecialchars($n['titulo']) ?></h3>
                                         <span class="text-[10px] text-outline font-medium whitespace-nowrap"><?= date('d M, H:i', strtotime($n['fecha_creacion'])) ?></span>
                                     </div>
                                     <p class="text-on-surface-variant text-sm mt-1"><?= nl2br(htmlspecialchars($n['contenido'])) ?></p>
-                                    <?php if (!empty($n['enlace'])): ?>
-                                        <a href="<?= BASE_URL . ltrim($n['enlace'], '/') ?>" class="inline-flex items-center gap-1 text-primary text-xs font-semibold mt-2 hover:underline">
-                                            Ver más
-                                            <span class="material-symbols-outlined text-xs">arrow_forward</span>
+
+                                <?php if ($n['tipo'] != 'solicitud_amistad' && !empty($n['enlace'])): ?>
+                                    </a>
+                                <?php else: ?>
+                                    </div>
+                                <?php endif; ?>
+
+                                <!-- Botones para solicitudes de amistad SOLO si la notificación NO está leída -->
+                                <?php if ($n['tipo'] == 'solicitud_amistad' && !$n['leida']): ?>
+                                    <div class="flex flex-col sm:flex-row gap-2 mt-2 shrink-0">
+                                        <a href="<?= BASE_URL ?>?c=notificacion&a=responderSolicitud&id_notif=<?= $n['id_notificacion'] ?>&respuesta=aceptar"
+                                           class="px-4 py-1.5 bg-primary text-white rounded-full text-sm font-medium hover:bg-primary-dark transition text-center">
+                                            Aceptar
                                         </a>
-                                    <?php endif; ?>
-                                </div>
-                                
-                                <!-- Botón de menú (tres puntos) -->
+                                        <a href="<?= BASE_URL ?>?c=notificacion&a=responderSolicitud&id_notif=<?= $n['id_notificacion'] ?>&respuesta=rechazar"
+                                           class="px-4 py-1.5 bg-outline-variant text-on-surface rounded-full text-sm font-medium hover:bg-surface-container transition text-center">
+                                            Rechazar
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
+
+                                <!-- Menú de tres puntos -->
                                 <div class="relative shrink-0">
                                     <button class="p-2 rounded-full hover:bg-surface-container transition-colors text-on-surface-variant" data-dropdown-trigger="true">
                                         <span class="material-symbols-outlined">more_vert</span>
@@ -163,14 +172,11 @@ require_once __DIR__ . '/../../includes/header.php';
         <?php endif; ?>
     </main>
 
-    <!-- Bottom Navigation para móviles -->
     <?php require_once __DIR__ . '/../../includes/bottom-nav.php'; ?>
 
-    <!-- Estilos para el scroll personalizado (morado y más ancho) -->
     <style>
-        /* Scrollbar siempre visible y anclado a la derecha */
         main {
-            overflow-y: scroll; /* Fuerza la barra a estar siempre presente */
+            overflow-y: scroll;
             scrollbar-width: thin;
             scrollbar-color: #5a2af7 #e7e8e8;
         }
@@ -190,7 +196,6 @@ require_once __DIR__ . '/../../includes/header.php';
         }
     </style>
 
-    <!-- Script para cerrar dropdowns al hacer scroll -->
     <script>
         const mainScroll = document.querySelector('main');
         if (mainScroll) {

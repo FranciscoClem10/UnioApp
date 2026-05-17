@@ -4,6 +4,7 @@
     session_start();
     require_once 'Config/config.php';
     require_once 'Modelos/Database.php';
+	//require_once 'Controladores/ControladorUbicacion.php';
 
     $controlador = $_GET['c'] ?? 'login';
     $accion     = $_GET['a'] ?? 'index';

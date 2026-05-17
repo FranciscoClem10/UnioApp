@@ -318,66 +318,6 @@
       </section>
     </main>
 
-    <!-- Pie de página -->
-    <footer class="bg-white py-16 px-8 lg:px-24">
-      <div class="max-w-screen-2xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
-        <div class="space-y-6">
-          <div class="flex items-center gap-2">
-            <img alt="Unio" class="h-6 w-auto" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAF6R6LXwJtSYvGv4izmoGbQgZwo2liMYwESTGBd-YFas5LPiSiWq28hC9qlhkBnk-pPvKyotdyqhq4S1GcJ8TAETSh62QLWALMhCRtm_0TLbwUjRJNvcQKk3jy9KxIUVGTkepJKlVIgSv76OwrUYbHhpCVejJwX1UbHYRM9ZXwnS_EEhGH6UDEuOB8_M1Yewjk5V-cyyYXT9NK3kNFYYcxkI8dFiTrokab1nbGKRtM9Xa1iAdvu0VEQe0o-VoJbNvexDtRlPTv0w"/>
-            <span class="text-xl font-black tracking-tighter text-[#5a2af7]">
-              Unio
-            </span>
-          </div>
-          <p class="text-on-surface-variant text-sm leading-relaxed">
-            Creando un mundo donde la tecnología sirve para unirnos en la vida real. Hecho con ❤️ para exploradores urbanos.
-          </p>
-          <div class="flex gap-4">
-            <div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary cursor-pointer hover:bg-primary hover:text-white transition-all">
-              <span class="material-symbols-outlined text-lg">public</span>
-            </div>
-            <div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary cursor-pointer hover:bg-primary hover:text-white transition-all">
-              <span class="material-symbols-outlined text-lg">
-                photo_camera
-              </span>
-            </div>
-          </div>
-        </div>
-        <div class="space-y-4">
-          <h5 class="font-bold text-sm uppercase tracking-widest text-on-surface">
-            Producto
-          </h5>
-          <ul class="space-y-2 text-on-surface-variant text-sm">
-            <li><a class="hover:text-primary transition-colors" href="#">Características</a></li>
-            <li><a class="hover:text-primary transition-colors" href="#">Explorar Ciudades</a></li>
-            <li><a class="hover:text-primary transition-colors" href="#">Para Organizadores</a></li>
-            <li><a class="hover:text-primary transition-colors" href="#">Seguridad</a></li>
-          </ul>
-        </div>
-        <div class="space-y-4">
-          <h5 class="font-bold text-sm uppercase tracking-widest text-on-surface">
-            Comunidad
-          </h5>
-          <ul class="space-y-2 text-on-surface-variant text-sm">
-            <li><a class="hover:text-primary transition-colors" href="#">Guía de la Comunidad</a></li>
-            <li><a class="hover:text-primary transition-colors" href="#">Eventos Destacados</a></li>
-            <li><a class="hover:text-primary transition-colors" href="#">Historias de Éxito</a></li>
-            <li><a class="hover:text-primary transition-colors" href="#">Blog</a></li>
-          </ul>
-        </div>
-        <div class="space-y-4">
-          <h5 class="font-bold text-sm uppercase tracking-widest text-on-surface">
-            Legal
-          </h5>
-          <ul class="space-y-2 text-on-surface-variant text-sm">
-            <li><a class="hover:text-primary transition-colors" href="#">Privacidad</a></li>
-            <li><a class="hover:text-primary transition-colors" href="#">Términos</a></li>
-            <li><a class="hover:text-primary transition-colors" href="#">Cookies</a></li>
-          </ul>
-        </div>
-      </div>
-      <div class="max-w-screen-2xl mx-auto pt-16 mt-16 border-t border-surface-container text-center text-xs text-outline-variant uppercase tracking-widest">
-        © 2026 Unio - Conectando con la realidad. Todos los derechos reservados.
-      </div>
-    </footer>
+    <?php require_once ROOT_PATH . '/includes/footer.php'; ?>
 </body>
 </html>

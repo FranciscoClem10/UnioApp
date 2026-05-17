@@ -13,6 +13,17 @@ function getOld($field, $default = '') {
     return htmlspecialchars($form_data[$field] ?? $default);
 }
 
+// Calcular fechas por defecto (si no hay datos en sesión)
+$default_fecha_inicio = '';
+$default_fecha_fin = '';
+if (empty($form_data['fecha_inicio'])) {
+    date_default_timezone_set('America/Mexico_City'); // Cambia a tu zona horaria
+    $now = new DateTime();
+    $default_fecha_inicio = $now->format('Y-m-d\TH:i');
+    $now->modify('+1 hour');
+    $default_fecha_fin = $now->format('Y-m-d\TH:i');
+}
+
 ?>
 <?php include 'includes/header.php'; ?>
 <?php include 'includes/top-nav.php'; ?>
@@ -43,23 +54,8 @@ function getOld($field, $default = '') {
         </div>
 
         <form action="<?= BASE_URL ?>?c=actividad&a=guardar" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 gap-8">
-            <!-- Sección: Imagen -->
-            <section class="bg-white p-6 md:p-8 rounded-xl shadow-[0_8px_32px_rgba(45,47,47,0.04)] space-y-6">
-                <div class="space-y-4">
-                    <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Imagen de la actividad</label>
-                    <div class="relative w-full">
-                        <input type="file" name="foto_actividad" accept="image/jpeg,image/png,image/webp" id="fotoInput" class="hidden">
-                        <label for="fotoInput" class="aspect-video w-full bg-surface-container-low rounded-xl border-2 border-dashed border-outline-variant flex flex-col items-center justify-center cursor-pointer hover:border-primary/40 transition-all group">
-                            <span class="material-symbols-outlined text-4xl text-on-surface-variant group-hover:text-primary transition-colors">add_photo_alternate</span>
-                            <p class="mt-2 text-sm text-on-surface-variant font-medium">Sube una imagen (JPG, PNG, WEBP, máx. 5MB)</p>
-                        </label>
-                        <div id="previewImage" class="hidden mt-4 relative rounded-xl overflow-hidden"></div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Sección: Nombre + Clasificación -->
-            <section class="bg-white p-6 md:p-8 rounded-xl shadow space-y-8">
+		
+			<section class="bg-white p-6 md:p-8 rounded-xl shadow space-y-8">
                 <div class="space-y-2">
                     <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Nombre de la actividad <span class="text-error">*</span></label>
                     <input class="w-full h-14 px-5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface font-body text-lg transition-all" 
@@ -67,6 +63,36 @@ function getOld($field, $default = '') {
                            type="text" name="nombre" required maxlength="100"
                            value="<?= getOld('nombre') ?>">
                 </div>
+			</section>
+			
+            <!-- Sección: Imagen -->
+			<section class="bg-white p-6 md:p-8 rounded-xl shadow-[0_8px_32px_rgba(45,47,47,0.04)] space-y-6">
+				<div class="space-y-4">
+					<label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Imagen de la actividad</label>
+					<div class="relative w-full">
+						<input type="file" name="foto_actividad" accept="image/jpeg,image/png,image/webp" id="fotoInput" class="hidden">
+						
+						<!-- Label para subir imagen -->
+						<label for="fotoInput" id="uploadLabel" class="aspect-video w-full bg-surface-container-low rounded-xl border-2 border-dashed border-outline-variant flex flex-col items-center justify-center cursor-pointer hover:border-primary/40 transition-all group">
+							<span class="material-symbols-outlined text-4xl text-on-surface-variant group-hover:text-primary transition-colors">add_photo_alternate</span>
+							<p class="mt-2 text-sm text-on-surface-variant font-medium">Sube una imagen (JPG, PNG, WEBP, máx. 5MB)</p>
+						</label>
+
+						<!-- Contenedor preview (inicialmente oculto) -->
+						<div id="previewContainer" class="relative hidden">
+							<div id="previewImage" class="aspect-video w-full rounded-xl overflow-hidden bg-surface-container-low">
+								<!-- Aquí se insertará la imagen -->
+							</div>
+							<button type="button" id="removeImageBtn" class="absolute top-2 right-2 bg-black/50 rounded-full p-1 text-white hover:bg-black/70 transition-all">
+								<span class="material-symbols-outlined text-xl">close</span>
+							</button>
+						</div>
+					</div>
+				</div>
+			</section>
+
+            <!-- Sección: Nombre + Clasificación -->
+            <section class="bg-white p-6 md:p-8 rounded-xl shadow space-y-8">
 
                 <div class="space-y-4">
                     <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Clasificación <span class="text-error">*</span></label>
@@ -91,7 +117,7 @@ function getOld($field, $default = '') {
                 </div>
             </section>
 
-            <!-- Límites y edades -->
+              <!-- Límites y edades -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-6">
                     <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Límites de Participantes</label>
@@ -100,13 +126,13 @@ function getOld($field, $default = '') {
                             <span class="text-xs text-on-surface-variant font-medium">Mínimo</span>
                             <input class="w-full h-12 px-4 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20" 
                                    type="number" name="limite_participantes_min" min="1"
-                                   value="<?= getOld('limite_participantes_min', 1) ?>">
+                                   value="<?= getOld('limite_participantes_min', 10) ?>">
                         </div>
                         <div>
-                            <span class="text-xs text-on-surface-variant font-medium">Máximo (opcional)</span>
+                            <span class="text-xs text-on-surface-variant font-medium">Máximo</span>
                             <input class="w-full h-12 px-4 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20" 
                                    type="number" name="limite_participantes_max" min="1"
-                                   value="<?= getOld('limite_participantes_max') ?>">
+                                   value="<?= getOld('limite_participantes_max', 15) ?>">
                         </div>
                     </div>
                 </div>
@@ -117,7 +143,7 @@ function getOld($field, $default = '') {
                             <span class="text-xs text-on-surface-variant font-medium">Edad mínima</span>
                             <input class="w-full h-12 px-4 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20" 
                                    type="number" name="edad_minima" min="0" max="99"
-                                   value="<?= getOld('edad_minima', 0) ?>">
+                                   value="<?= getOld('edad_minima', 12) ?>">
                         </div>
                         <div>
                             <span class="text-xs text-on-surface-variant font-medium">Edad máxima</span>
@@ -134,28 +160,57 @@ function getOld($field, $default = '') {
                 <div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-6">
                     <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Inicio <span class="text-error">*</span></label>
                     <input type="datetime-local" name="fecha_inicio" required class="w-full h-12 px-4 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20"
-                           value="<?= getOld('fecha_inicio') ?>">
+                           value="<?= getOld('fecha_inicio', $default_fecha_inicio) ?>">
                 </div>
                 <div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-6">
                     <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Fin <span class="text-error">*</span></label>
                     <input type="datetime-local" name="fecha_fin" required class="w-full h-12 px-4 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20"
-                           value="<?= getOld('fecha_fin') ?>">
+                           value="<?= getOld('fecha_fin', $default_fecha_fin) ?>">
                 </div>
             </div>
+
 
             <!-- Mapa y ubicación -->
             <div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-6">
                 <label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Ubicación <span class="text-error">*</span></label>
-                <div id="map" class="h-64 w-full rounded-xl overflow-hidden border border-outline-variant/30 z-10"></div>
+                <div id="map" class="h-[450px] md:h-[500px] w-full rounded-xl overflow-hidden border border-outline-variant/30 z-10"></div>
                 <div class="flex justify-end">
                     <button type="button" id="btnMiUbicacion" class="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-xl text-sm font-medium hover:bg-primary/20 transition-all">
                         <span class="material-symbols-outlined text-base">my_location</span> Usar mi ubicación
                     </button>
                 </div>
-                <div id="direccionMostrada" class="text-sm text-on-surface-variant bg-surface-container-low p-3 rounded-lg">No seleccionada</div>
                 <input type="hidden" name="latitud" id="latInput" required value="<?= getOld('latitud') ?>">
                 <input type="hidden" name="longitud" id="lngInput" required value="<?= getOld('longitud') ?>">
             </div>
+			
+			<div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-6">
+				<label class="block font-bold text-sm uppercase tracking-widest text-on-surface-variant">Dirección</label>
+				
+				<!-- Selector de modo -->
+				<div class="flex gap-4 mb-4">
+					<label class="inline-flex items-center gap-2 cursor-pointer">
+						<input type="radio" name="modo_direccion" value="auto" checked class="radio-auto"> 
+						<span>Automática (desde el mapa)</span>
+					</label>
+					<label class="inline-flex items-center gap-2 cursor-pointer">
+						<input type="radio" name="modo_direccion" value="manual" class="radio-manual"> 
+						<span>Manual (escribir dirección)</span>
+					</label>
+				</div>
+
+				<!-- Campo automático (solo lectura) -->
+				<div id="direccionAutoContainer" class="block">
+					<div id="direccionAuto" class="w-full p-4 bg-surface-container-low rounded-xl text-on-surface-variant text-sm">
+						Obteniendo dirección...
+					</div>
+					<input type="hidden" name="direccion" id="direccionHidden" value="">
+				</div>
+
+				<!-- Campo manual (inicialmente oculto) -->
+				<div id="direccionManualContainer" class="hidden">
+					<input type="text" id="direccionManual" name="direccion_manual" class="w-full h-14 px-5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface font-body text-sm" placeholder="Escribe la dirección completa...">
+				</div>
+			</div>
 
             <!-- Descripción y requisitos -->
             <div class="bg-white p-6 md:p-8 rounded-xl shadow space-y-8">
@@ -219,10 +274,20 @@ function getOld($field, $default = '') {
         </form>
     </div>
 </div>
+<script>
+    const BASE_URL = '<?= BASE_URL ?>';
+</script>
 
 <!-- Scripts Leaflet y demás -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+    // Variables de ubicación desde la base de datos (pueden ser null)
+    const hasDbLocation = <?= json_encode(!is_null($user_lat) && !is_null($user_lng)) ?>;
+    const dbLat = <?= json_encode($user_lat) ?>;
+    const dbLng = <?= json_encode($user_lng) ?>;
+</script>
 
 <?php include 'Scripts/crearS.php'; ?>
 <?php include 'includes/bottom-nav.php'; ?>

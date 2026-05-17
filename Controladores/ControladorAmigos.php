@@ -119,13 +119,13 @@ class ControladorAmigos {
             $_SESSION['mensaje_amigos'] = "Solicitud enviada correctamente.";
             $modeloNotif = new ModeloNotificacion();
             $nombreRemitente = $_SESSION['usuario_nombre'] ?? 'Un usuario';
-            $modeloNotif->crear(
-                $id_receptor,
-                'solicitud_amistad',
-                'Nueva solicitud de amistad',
-                "$nombreRemitente te ha enviado una solicitud de amistad.",
-                '?c=amigos'
-            );
+			$modeloNotif->crear(
+				$id_receptor,
+				'solicitud_amistad',
+				'Nueva solicitud de amistad',
+				"$nombreRemitente te ha enviado una solicitud de amistad.",
+				'?c=amigos&id_solicitante=' . $_SESSION['usuario_id']   // ← añadimos el ID
+			);
         } else {
             $_SESSION['error_amigos'] = "No se pudo enviar la solicitud (quizás ya existe).";
         }

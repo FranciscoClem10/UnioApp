@@ -4,10 +4,10 @@ include 'includes/top-nav.php';
 ?>
 
 <div class="flex-1 overflow-y-auto">
-    <!-- Hero Header (sin cambios) -->
+    <!-- Hero Header -->
     <div class="relative">
         <div class="h-64 md:h-80 w-full overflow-hidden relative">
-            <div class="w-full h-full bg-[#5a2af7]"></div>
+            <div class="w-full h-full bg-[#5d36db]"></div>
         </div>
 
         <div class="max-w-6xl mx-auto px-6 md:px-12 -mt-16 relative z-10">
@@ -32,7 +32,7 @@ include 'includes/top-nav.php';
                             <div class="text-on-surface-variant font-medium text-sm mt-1">
                                 <span class="material-symbols-outlined text-[16px]">location_on</span>
                                 <span id="direccion-usuario">
-                                    <?= htmlspecialchars($usuario['ubicacion'] ?? 'Obteniendo ubicación...') ?>
+                                    <?= htmlspecialchars($usuario['ubicacion'] ?? 'Ubicación no disponible') ?>
                                 </span>
                             </div>
                             <?php
@@ -76,7 +76,7 @@ include 'includes/top-nav.php';
                 </p>
             </section>
 
-            <!-- NUEVO: Amigos -->
+            <!-- Amigos -->
             <?php if (!empty($amigos)): ?>
                 <section class="bg-surface-container-lowest p-8 rounded-3xl shadow-[0_8px_32px_rgba(45,47,47,0.02)]">
                     <h2 class="text-xl font-bold font-headline mb-6 text-on-surface">Amigos</h2>
@@ -124,11 +124,28 @@ include 'includes/top-nav.php';
             </section>
         </div>
 
-        <!-- Right Column: Actividades (sin cambios) -->
+        <!-- Right Column: Actividades -->
         <div class="lg:col-span-8 space-y-8">
             <section>
-                <div class="flex items-center justify-between mb-8">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                     <h2 class="text-2xl font-black font-headline tracking-tight text-on-surface">Mis Actividades</h2>
+                    <!-- Filtros y orden -->
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="flex bg-surface-container-low p-1 rounded-xl gap-1">
+                            <button data-filter="all" class="filter-btn px-4 py-1.5 text-sm font-bold rounded-lg bg-primary text-white shadow-sm">Todos</button>
+                            <button data-filter="creador" class="filter-btn px-4 py-1.5 text-sm font-medium rounded-lg text-on-surface-variant hover:text-on-surface">Creador</button>
+                            <button data-filter="organizador" class="filter-btn px-4 py-1.5 text-sm font-medium rounded-lg text-on-surface-variant hover:text-on-surface">Organizador</button>
+                            <button data-filter="miembro" class="filter-btn px-4 py-1.5 text-sm font-medium rounded-lg text-on-surface-variant hover:text-on-surface">Miembro</button>
+                        </div>
+                        <select id="sort-order" class="bg-surface-container-low text-on-surface rounded-xl px-4 py-1.5 text-sm font-medium border border-outline-variant/20 focus:outline-none">
+                            <option value="desc">Más recientes</option>
+                            <option value="asc">Más antiguas</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Pestañas Próximas / Pasadas -->
+                <div class="flex items-center justify-between mb-8">
                     <div class="bg-surface-container-low p-1 rounded-xl flex gap-1">
                         <button id="btn-proximas" class="px-5 py-1.5 bg-white shadow-sm text-primary font-bold text-sm rounded-lg transition-all" onclick="toggleActivities('proximas')">Próximas</button>
                         <button id="btn-pasadas" class="px-5 py-1.5 text-on-surface-variant hover:text-on-surface font-medium text-sm rounded-lg transition-all" onclick="toggleActivities('pasadas')">Pasadas</button>
@@ -162,12 +179,84 @@ include 'includes/top-nav.php';
 <?php include 'includes/bottom-nav.php'; ?>
 
 <script>
+    // Variables de estado
+    let currentFilter = 'all';
+    let currentSort = 'desc';
+    let currentTab = 'proximas';
+    
+    // Almacenar las tarjetas originales de cada contenedor
+    let originalCardsProximas = [];
+    let originalCardsPasadas = [];
+    
+    // Guardar las tarjetas reales (ignorar mensajes de texto)
+    function cacheOriginalCards() {
+        const containerProx = document.getElementById('container-proximas');
+        const containerPas = document.getElementById('container-pasadas');
+        if (containerProx) {
+            originalCardsProximas = Array.from(containerProx.querySelectorAll('.actividad-card'));
+        }
+        if (containerPas) {
+            originalCardsPasadas = Array.from(containerPas.querySelectorAll('.actividad-card'));
+        }
+    }
+    
+    // Renderizar el contenedor activo aplicando filtro y orden
+    function renderCurrentContainer() {
+        const container = document.getElementById(`container-${currentTab}`);
+        if (!container) return;
+        
+        let originalCards = (currentTab === 'proximas') ? originalCardsProximas : originalCardsPasadas;
+        
+        if (originalCards.length === 0) {
+            container.innerHTML = '<p class="text-on-surface-variant text-sm">No tienes actividades.</p>';
+            return;
+        }
+        
+        // Filtrar por rol
+        let filteredCards = originalCards;
+        if (currentFilter !== 'all') {
+            filteredCards = originalCards.filter(card => card.dataset.role === currentFilter);
+        }
+        
+        // Ordenar por fecha (timestamp en data-date)
+        filteredCards.sort((a, b) => {
+            const dateA = parseInt(a.dataset.date);
+            const dateB = parseInt(b.dataset.date);
+            return currentSort === 'desc' ? dateB - dateA : dateA - dateB;
+        });
+        
+        // Vaciar y volver a llenar
+        container.innerHTML = '';
+        if (filteredCards.length === 0) {
+            const emptyMsg = document.createElement('p');
+            emptyMsg.className = 'text-on-surface-variant text-sm';
+            emptyMsg.textContent = 'No hay actividades que coincidan con el filtro.';
+            container.appendChild(emptyMsg);
+        } else {
+            filteredCards.forEach(card => container.appendChild(card));
+        }
+        
+        // Actualizar estilo de los botones de filtro
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            const filterValue = btn.dataset.filter;
+            if (filterValue === currentFilter) {
+                btn.classList.add('bg-primary', 'text-white', 'shadow-sm');
+                btn.classList.remove('text-on-surface-variant', 'bg-transparent');
+            } else {
+                btn.classList.remove('bg-primary', 'text-white', 'shadow-sm');
+                btn.classList.add('text-on-surface-variant');
+            }
+        });
+    }
+    
+    // Cambiar de pestaña (Próximas / Pasadas)
     function toggleActivities(type) {
+        currentTab = type;
         const containerProximas = document.getElementById('container-proximas');
         const containerPasadas = document.getElementById('container-pasadas');
         const btnProximas = document.getElementById('btn-proximas');
         const btnPasadas = document.getElementById('btn-pasadas');
-
+        
         if (type === 'proximas') {
             containerProximas.classList.remove('hidden');
             containerPasadas.classList.add('hidden');
@@ -183,44 +272,32 @@ include 'includes/top-nav.php';
             btnProximas.classList.remove('bg-white', 'shadow-sm', 'text-primary');
             btnProximas.classList.add('text-on-surface-variant');
         }
+        
+        renderCurrentContainer();
     }
-
+    
+    // Event listeners
     document.addEventListener('DOMContentLoaded', function() {
+        cacheOriginalCards();
+        
+        // Filtros
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                currentFilter = this.dataset.filter;
+                renderCurrentContainer();
+            });
+        });
+        
+        // Selector de orden
+        const sortSelect = document.getElementById('sort-order');
+        if (sortSelect) {
+            sortSelect.addEventListener('change', function(e) {
+                currentSort = this.value;
+                renderCurrentContainer();
+            });
+        }
+        
+        // Inicializar pestaña
         toggleActivities('proximas');
-    });
-
-    // Geocodificación inversa (sin cambios)
-    document.addEventListener("DOMContentLoaded", async function () {
-        const lat = <?= json_encode($usuario['latitud']) ?>;
-        const lng = <?= json_encode($usuario['longitud']) ?>;
-        const direccionSpan = document.getElementById("direccion-usuario");
-
-        if (!lat || !lng) {
-            direccionSpan.textContent = "Ubicación no disponible";
-            return;
-        }
-
-        try {
-            const response = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
-            );
-            const data = await response.json();
-            if (data.address) {
-                const address = data.address;
-                const direccion = [
-                    address.road,
-                    address.suburb,
-                    address.city || address.town || address.village,
-                    address.state,
-                    address.country
-                ].filter(Boolean).join(", ");
-                direccionSpan.textContent = direccion || data.display_name;
-            } else {
-                direccionSpan.textContent = "Dirección no encontrada";
-            }
-        } catch (error) {
-            console.error("Error obteniendo dirección:", error);
-            direccionSpan.textContent = "Error al obtener ubicación";
-        }
     });
 </script>

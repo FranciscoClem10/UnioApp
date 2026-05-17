@@ -13,7 +13,6 @@
 	let currentFilter = "";
 	let currentCategoria = "";
 	
-	console.log(actividades);
 
 	// Colores de categorias (dinámicos)
 	const categoriaColores = {

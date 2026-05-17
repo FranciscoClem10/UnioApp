@@ -153,5 +153,53 @@ class ControladorParticipacion {
         header('Location: ' . BASE_URL . '?c=actividad&a=detalle&id=' . $id_actividad);
         exit;
     }
+	
+	public function salir() {
+        if (!isset($_SESSION['usuario_id'])) {
+            header('Location: ' . BASE_URL . '?c=login');
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['id_actividad'])) {
+            $_SESSION['error_participacion'] = 'Solicitud inválida.';
+            header('Location: ' . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
+
+        $id_actividad = (int)$_POST['id_actividad'];
+        $id_usuario = $_SESSION['usuario_id'];
+
+        $modelo = new ModeloActividad();
+
+        // Verificar que el usuario no sea el creador (no puede salir)
+        $actividad = $modelo->obtenerDetalleCompleto($id_actividad);
+        if (!$actividad) {
+            $_SESSION['error_participacion'] = 'Actividad no encontrada.';
+            header('Location: ' . BASE_URL . '?c=dashboard');
+            exit;
+        }
+
+        if ($actividad['organizador_id'] == $id_usuario) {
+            $_SESSION['error_participacion'] = 'El organizador no puede salir de su propia actividad.';
+            header('Location: ' . BASE_URL . '?c=actividad&a=detalle&id=' . $id_actividad);
+            exit;
+        }
+
+        // Eliminar al usuario de la tabla participantes (solo si estado = aceptado)
+        $db = Database::getConexion();
+        $sql = "DELETE FROM participantes 
+                WHERE id_actividad = :id_act AND id_usuario = :id_user AND estado = 'aceptado'";
+        $stmt = $db->prepare($sql);
+        $exito = $stmt->execute([':id_act' => $id_actividad, ':id_user' => $id_usuario]);
+
+        if ($exito && $stmt->rowCount() > 0) {
+            $_SESSION['exito_participacion'] = 'Has salido de la actividad correctamente.';
+        } else {
+            $_SESSION['error_participacion'] = 'No se pudo salir de la actividad (quizás ya no eras participante).';
+        }
+
+        header('Location: ' . BASE_URL . '?c=actividad&a=detalle&id=' . $id_actividad);
+        exit;
+    }
 }
 ?>

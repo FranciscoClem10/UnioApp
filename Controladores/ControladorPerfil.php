@@ -15,7 +15,9 @@ class ControladorPerfil {
 			header('Location: ' . BASE_URL . '?c=login');
 			exit;
 		}
-
+		
+		$usuario['ubicacion'] = $this->obtenerDireccionDesdeCoordenadas($usuario['latitud'], $usuario['longitud'], $_SESSION['usuario_id']);
+		
 		// Datos básicos del perfil
 		$usuario['apellidos'] = trim($usuario['apellido_paterno'] . ' ' . $usuario['apellido_materno']);
 		if (!empty($usuario['foto_perfil'])) {
@@ -199,6 +201,9 @@ class ControladorPerfil {
 			'latitud' => $latitud,
 			'longitud' => $longitud
 		];
+		
+		// Después de actualizar los datos del perfil
+		unset($_SESSION["ubicacion_usuario_{$_SESSION['usuario_id']}"]);
 
 		// Actualizar perfil en la base de datos
 		if ($modelo->actualizarPerfil($_SESSION['usuario_id'], $datos, $foto_blob)) {
@@ -299,5 +304,56 @@ class ControladorPerfil {
         header('Location: ' . BASE_URL . '?c=perfil');
         exit;
     }
+
+	private function obtenerDireccionDesdeCoordenadas($lat, $lng, $userId) {
+		if (empty($lat) || empty($lng)) {
+			return "Ubicación no disponible";
+		}
+
+		// Revisar si ya tenemos la dirección en la sesión para este usuario
+		$claveSesion = "ubicacion_usuario_$userId";
+		if (isset($_SESSION[$claveSesion])) {
+			return $_SESSION[$claveSesion];
+		}
+
+		// Construir URL de Nominatim
+		$url = "https://nominatim.openstreetmap.org/reverse?format=json&lat={$lat}&lon={$lng}&zoom=18&addressdetails=1";
+
+		// Usar cURL para evitar CORS y problemas de allow_url_fopen
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_USERAGENT, 'UnioApp/1.0 ( contacto@tuapp.com )'); // Respetar política de Nominatim
+		curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+		$response = curl_exec($ch);
+		$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		curl_close($ch);
+
+		if ($httpCode !== 200 || !$response) {
+			return "Dirección no encontrada";
+		}
+
+		$data = json_decode($response, true);
+		if (isset($data['address'])) {
+			$addr = $data['address'];
+			$partes = [];
+			if (!empty($addr['road'])) $partes[] = $addr['road'];
+			if (!empty($addr['suburb'])) $partes[] = $addr['suburb'];
+			if (!empty($addr['city'])) $partes[] = $addr['city'];
+			elseif (!empty($addr['town'])) $partes[] = $addr['town'];
+			elseif (!empty($addr['village'])) $partes[] = $addr['village'];
+			if (!empty($addr['state'])) $partes[] = $addr['state'];
+			if (!empty($addr['country'])) $partes[] = $addr['country'];
+
+			$direccion = implode(", ", $partes);
+			if (empty($direccion)) $direccion = $data['display_name'] ?? "Dirección no encontrada";
+		} else {
+			$direccion = "Dirección no encontrada";
+		}
+
+		// Guardar en sesión para futuras peticiones
+		$_SESSION[$claveSesion] = $direccion;
+		return $direccion;
+	}
 }
 ?>

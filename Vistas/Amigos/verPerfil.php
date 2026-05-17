@@ -265,7 +265,7 @@ $tituloActividades = $esPropietario ? 'Mis Actividades' : 'Sus actividades';
                                             <?= date('d M, Y · H:i', strtotime($act['fecha_fin'])) ?>
                                         </div>
                                     </div>
-                                    <a href="<?= BASE_URL ?>?c=actividades&a=ver&id=<?= $act['id_actividad'] ?>" class="text-primary font-bold text-xs flex items-center gap-1 hover:gap-2 transition-all">
+                                    <a href="<?= BASE_URL ?>?c=actividad&a=detalle&id=<?= $act['id_actividad'] ?>" class="text-primary font-bold text-xs flex items-center gap-1 hover:gap-2 transition-all">
                                         Ver detalles
                                         <span class="material-symbols-outlined text-xs">arrow_forward</span>
                                     </a>

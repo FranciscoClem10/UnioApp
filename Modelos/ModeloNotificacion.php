@@ -162,4 +162,12 @@ class ModeloNotificacion {
         $ref = '%' . $referencia . '%';
         return $stmt->execute([':id_user' => $id_usuario, ':tipo' => $tipo, ':ref' => $ref]);
     }
+	
+	// En ModeloNotificacion, después del constructor
+	public function obtenerPorId($id_notificacion, $id_usuario) {
+		$sql = "SELECT * FROM notificaciones WHERE id_notificacion = :id AND id_usuario = :id_user";
+		$stmt = $this->db->prepare($sql);
+		$stmt->execute([':id' => $id_notificacion, ':id_user' => $id_usuario]);
+		return $stmt->fetch(PDO::FETCH_ASSOC);
+	}
 }
