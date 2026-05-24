@@ -15,7 +15,7 @@ switch ($actividad['rol_usuario']) {
         $borderColorClass = 'border-indigo-200';
         $textColorClass = 'text-gray-900';
         $textMutedClass = 'text-gray-600';
-        $linkDestino = BASE_URL . '?c=actividad&a=gestion&id=' . $actividad['id_actividad'];
+        $linkDestino = BASE_URL . '?c=GestionActividad&a=index&id=' . $actividad['id_actividad'];
         break;
 
     case 'organizador':
@@ -24,7 +24,7 @@ switch ($actividad['rol_usuario']) {
         $borderColorClass = 'border-indigo-300';
         $textColorClass = 'text-gray-900';
         $textMutedClass = 'text-gray-700';
-        $linkDestino = BASE_URL . '?c=actividad&a=gestion&id=' . $actividad['id_actividad'];
+        $linkDestino = BASE_URL . '?c=GestionActividad&a=index&id=' . $actividad['id_actividad'];
         break;
 	
 	case 'miembro':

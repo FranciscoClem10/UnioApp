@@ -61,24 +61,29 @@ class ModeloActividad {
 	}
 
     // Actividades creadas por el usuario
-    public function obtenerPorCreador($usuario_id) {
-		$sql = "SELECT a.id_actividad, a.nombre AS titulo, a.descripcion, a.requisitos, 
-					   a.edad_minima, a.limite_participantes_max AS limite_personas,
-					   a.latitud, a.longitud, a.privacidad AS tipo_acceso, a.estado,
-					   ta.nombre_tipo AS categoria,
-					   a.fecha_inicio AS fecha_proxima,
-					   a.direccion,
-					   DATE_FORMAT(a.fecha_inicio, '%H:%i:%s') AS hora_proxima
+	public function obtenerPorCreador($usuario_id) {
+
+		$sql = "SELECT DISTINCT
+					a.id_actividad, a.nombre AS titulo, a.descripcion, a.requisitos, a.edad_minima,
+					a.limite_participantes_max AS limite_personas, a.latitud, a.longitud,
+					a.privacidad AS tipo_acceso, a.estado, ta.nombre_tipo AS categoria, a.fecha_inicio AS fecha_proxima,
+					a.direccion, DATE_FORMAT(a.fecha_inicio, '%H:%i:%s') AS hora_proxima, p.rol
 				FROM actividades a
 				INNER JOIN tipos_actividad ta ON a.id_tipo = ta.id_tipo
-				WHERE a.id_creador = :id_creador
+				INNER JOIN participantes p ON a.id_actividad = p.id_actividad
+				WHERE p.id_usuario = :id_usuario
+				AND p.rol IN ('creador', 'organizador')
 				ORDER BY a.fecha_inicio ASC";
+
 		$stmt = $this->db->prepare($sql);
-		$stmt->execute([':id_creador' => $usuario_id]);
+		$stmt->execute([':id_usuario' => $usuario_id]);
+
 		$actividades = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 		foreach ($actividades as &$act) {
 			$act['fecha'] = $act['fecha_proxima'] ? date('Y-m-d', strtotime($act['fecha_proxima'])) : null;
 			$act['hora'] = $act['hora_proxima'] ?? null;
+
 			switch ($act['tipo_acceso']) {
 				case 'publica': $act['tipo_acceso'] = 'todos'; break;
 				case 'privada': $act['tipo_acceso'] = 'invitacion'; break;
@@ -86,6 +91,7 @@ class ModeloActividad {
 				default: $act['tipo_acceso'] = 'todos';
 			}
 		}
+
 		return $actividades;
 	}
 
@@ -190,69 +196,71 @@ class ModeloActividad {
 	}
 
     public function obtenerDetalleCompleto($id_actividad) {
-        // Se usa CONCAT_WS para omitir espacios si algún apellido está vacío o nulo
-        $sql = "SELECT a.*, ta.nombre_tipo AS categoria, 
-                       CONCAT_WS(' ', u.nombre, u.apellido_paterno, u.apellido_materno) AS organizador_nombre,
-                       u.id_usuario AS organizador_id,
-                       a.fecha_creacion AS fecha_publicacion
-                FROM actividades a
-                INNER JOIN tipos_actividad ta ON a.id_tipo = ta.id_tipo
-                INNER JOIN usuarios u ON a.id_creador = u.id_usuario
-                WHERE a.id_actividad = :id";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([':id' => $id_actividad]);
-        $actividad = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$actividad) return null;
+    // Se usa CONCAT_WS para omitir espacios si algún apellido está vacío o nulo
+    $sql = "SELECT a.*, ta.nombre_tipo AS categoria, 
+                   CONCAT_WS(' ', u.nombre, u.apellido_paterno, u.apellido_materno) AS organizador_nombre,
+                   u.id_usuario AS organizador_id,
+                   a.fecha_creacion AS fecha_publicacion
+            FROM actividades a
+            INNER JOIN tipos_actividad ta ON a.id_tipo = ta.id_tipo
+            INNER JOIN usuarios u ON a.id_creador = u.id_usuario
+            WHERE a.id_actividad = :id";
+    $stmt = $this->db->prepare($sql);
+    $stmt->execute([':id' => $id_actividad]);
+    $actividad = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$actividad) return null;
 
-        // Formatear fechas directamente de los campos de la actividad
-        $actividad['fecha_inicio'] = date('Y-m-d', strtotime($actividad['fecha_inicio']));
-        $actividad['hora_inicio'] = date('H:i', strtotime($actividad['fecha_inicio']));
-        $actividad['fecha_fin'] = date('Y-m-d', strtotime($actividad['fecha_fin']));
-        $actividad['hora_fin'] = date('H:i', strtotime($actividad['fecha_fin']));
+    // Formatear fechas directamente de los campos de la actividad
+    $actividad['fecha_inicio'] = date('Y-m-d', strtotime($actividad['fecha_inicio']));
+    $actividad['hora_inicio'] = date('H:i', strtotime($actividad['fecha_inicio']));
+    $actividad['fecha_fin'] = date('Y-m-d', strtotime($actividad['fecha_fin']));
+    $actividad['hora_fin'] = date('H:i', strtotime($actividad['fecha_fin']));
 
-        // Contar participantes confirmados
-        $sqlConfirmados = "SELECT COUNT(*) as total 
-                           FROM participantes 
-                           WHERE id_actividad = :id AND estado = 'aceptado'";
-        $stmtConf = $this->db->prepare($sqlConfirmados);
-        $stmtConf->execute([':id' => $id_actividad]);
-        $actividad['asistentes_confirmados'] = (int)$stmtConf->fetchColumn();
+    // Contar participantes confirmados
+    $sqlConfirmados = "SELECT COUNT(*) as total 
+                       FROM participantes 
+                       WHERE id_actividad = :id AND estado = 'aceptado'";
+    $stmtConf = $this->db->prepare($sqlConfirmados);
+    $stmtConf->execute([':id' => $id_actividad]);
+    $actividad['asistentes_confirmados'] = (int)$stmtConf->fetchColumn();
 
-        // Capacidad
-        $actividad['capacidad_max'] = $actividad['limite_participantes_max'] ?? 'Sin límite';
-        $actividad['capacidad_min'] = $actividad['limite_participantes_min'] ?? 1;
+    // Capacidad
+    $actividad['capacidad_max'] = $actividad['limite_participantes_max'] ?? 'Sin límite';
+    $actividad['capacidad_min'] = $actividad['limite_participantes_min'] ?? 1;
 
-        // Tipo de acceso legible
-        switch ($actividad['privacidad']) {
-            case 'publica': $actividad['tipo_acceso_legible'] = 'Pública (cualquiera puede unirse)'; break;
-            case 'privada': $actividad['tipo_acceso_legible'] = 'Privada (solo invitados)'; break;
-            case 'por_aprobacion': $actividad['tipo_acceso_legible'] = 'Por aprobación (requiere autorización)'; break;
-            default: $actividad['tipo_acceso_legible'] = 'No especificado';
-        }
-
-        // Requisitos como array
-        $actividad['requisitos_array'] = !empty($actividad['requisitos']) ? explode("\n", $actividad['requisitos']) : [];
-        $actividad['incluye_array'] = [];
-
-        // Participantes pendientes/invitados
-        $sqlExtra = "SELECT COUNT(*) as extra 
-                     FROM participantes 
-                     WHERE id_actividad = :id AND estado IN ('pendiente', 'invitado')";
-        $stmtExtra = $this->db->prepare($sqlExtra);
-        $stmtExtra->execute([':id' => $id_actividad]);
-        $actividad['asistentes_extra'] = (int)$stmtExtra->fetchColumn();
-
-        // Fecha publicación
-        $actividad['hora_publicacion'] = date('H:i', strtotime($actividad['fecha_publicacion']));
-        $actividad['fecha_publicacion'] = date('Y-m-d', strtotime($actividad['fecha_publicacion']));
-
-        // Coordenadas
-        $actividad['lat'] = $actividad['latitud'];
-        $actividad['lng'] = $actividad['longitud'];
-        $actividad['direccion'] = "Coordenadas: {$actividad['latitud']}, {$actividad['longitud']}";
-
-        return $actividad;
+    // Tipo de acceso legible
+    switch ($actividad['privacidad']) {
+        case 'publica': $actividad['tipo_acceso_legible'] = 'Pública (cualquiera puede unirse)'; break;
+        case 'privada': $actividad['tipo_acceso_legible'] = 'Privada (solo invitados)'; break;
+        case 'por_aprobacion': $actividad['tipo_acceso_legible'] = 'Por aprobación (requiere autorización)'; break;
+        default: $actividad['tipo_acceso_legible'] = 'No especificado';
     }
+
+    // Requisitos como array
+    $actividad['requisitos_array'] = !empty($actividad['requisitos']) ? explode("\n", $actividad['requisitos']) : [];
+    $actividad['incluye_array'] = [];
+
+    // Participantes pendientes/invitados
+    $sqlExtra = "SELECT COUNT(*) as extra 
+                 FROM participantes 
+                 WHERE id_actividad = :id AND estado IN ('pendiente', 'invitado')";
+    $stmtExtra = $this->db->prepare($sqlExtra);
+    $stmtExtra->execute([':id' => $id_actividad]);
+    $actividad['asistentes_extra'] = (int)$stmtExtra->fetchColumn();
+
+    // Fecha publicación
+    $actividad['hora_publicacion'] = date('H:i', strtotime($actividad['fecha_publicacion']));
+    $actividad['fecha_publicacion'] = date('Y-m-d', strtotime($actividad['fecha_publicacion']));
+
+    // Coordenadas y dirección (AHORA SIN SOBRESCRIBIR direccion)
+    $actividad['lat'] = $actividad['latitud'];
+    $actividad['lng'] = $actividad['longitud'];
+    // Se puede agregar una clave separada si se desea mostrar el texto "Coordenadas: ..."
+    $actividad['coordenadas_texto'] = "Coordenadas: {$actividad['latitud']}, {$actividad['longitud']}";
+    // IMPORTANTE: NO se modifica $actividad['direccion'] (se conserva el valor de la BD)
+
+    return $actividad;
+}
 
     // Verificar si un usuario es participante aceptado (incluye creador/organizador)
     public function esParticipanteActivo($id_actividad, $id_usuario) {

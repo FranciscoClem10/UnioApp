@@ -190,5 +190,142 @@ class ControladorNotificacion {
 		}
 		return null;
 	}
+	
+		public function responderInvitacionActividad() {
+		if (!isset($_SESSION['usuario_id'])) {
+			$this->respuestaJson(false, 'No autorizado', null, 401);
+			exit;
+		}
+		$id_notificacion = (int)($_POST['id_notif'] ?? 0);
+		$respuesta = $_POST['respuesta'] ?? ''; // 'aceptar' o 'rechazar'
+		if ($id_notificacion <= 0 || !in_array($respuesta, ['aceptar', 'rechazar'])) {
+			$this->respuestaJson(false, 'Datos inválidos');
+		}
+
+		$modeloNotif = new ModeloNotificacion();
+		$notificacion = $modeloNotif->obtenerPorId($id_notificacion, $_SESSION['usuario_id']);
+		if (!$notificacion || $notificacion['tipo'] !== 'actividad' || $notificacion['titulo'] !== 'Invitación a actividad') {
+			$this->respuestaJson(false, 'Notificación no válida');
+		}
+
+		// Extraer id_actividad del enlace
+		$id_actividad = $this->_extraerIdActividadDesdeEnlace($notificacion['enlace']);
+		if (!$id_actividad) {
+			$this->respuestaJson(false, 'No se pudo identificar la actividad');
+		}
+
+		require_once 'Modelos/ModeloActividad.php';
+		$modeloAct = new ModeloActividad();
+		$actividad = $modeloAct->obtenerPorId($id_actividad);
+		if (!$actividad) {
+			$this->respuestaJson(false, 'Actividad no encontrada');
+		}
+
+		if ($respuesta === 'aceptar') {
+			// Verificar cupo
+			$totalAceptados = $modeloAct->contarParticipantesAceptados($id_actividad);
+			$limiteMax = $actividad['limite_participantes_max'];
+			if ($limiteMax !== null && $totalAceptados >= $limiteMax) {
+				$this->respuestaJson(false, 'La actividad ya está llena');
+			}
+			$sql = "UPDATE participantes SET estado = 'aceptado' WHERE id_actividad = :id_act AND id_usuario = :id_user AND estado = 'invitado'";
+		} else {
+			$sql = "DELETE FROM participantes WHERE id_actividad = :id_act AND id_usuario = :id_user AND estado = 'invitado'";
+		}
+		$db = Database::getConexion();
+		$stmt = $db->prepare($sql);
+		$ok = $stmt->execute([':id_act' => $id_actividad, ':id_user' => $_SESSION['usuario_id']]);
+
+		if ($ok) {
+			$modeloNotif->marcarLeida($id_notificacion, $_SESSION['usuario_id']);
+			$mensaje = ($respuesta === 'aceptar') ? 'Te has unido a la actividad' : 'Has rechazado la invitación';
+			$this->respuestaJson(true, $mensaje);
+		} else {
+			$this->respuestaJson(false, 'Error al procesar la invitación');
+		}
+	}
+
+	/**
+	 * Acepta o rechaza una invitación para ser organizador
+	 */
+	public function responderInvitacionOrganizador() {
+		if (!isset($_SESSION['usuario_id'])) {
+			$this->respuestaJson(false, 'No autorizado', null, 401);
+			exit;
+		}
+		$id_notificacion = (int)($_POST['id_notif'] ?? 0);
+		$respuesta = $_POST['respuesta'] ?? '';
+		if ($id_notificacion <= 0 || !in_array($respuesta, ['aceptar', 'rechazar'])) {
+			$this->respuestaJson(false, 'Datos inválidos');
+		}
+
+		$modeloNotif = new ModeloNotificacion();
+		$notificacion = $modeloNotif->obtenerPorId($id_notificacion, $_SESSION['usuario_id']);
+		if (!$notificacion || $notificacion['tipo'] !== 'actividad' || $notificacion['titulo'] !== 'Invitación a organizador') {
+			$this->respuestaJson(false, 'Notificación no válida');
+		}
+
+		$id_actividad = $this->_extraerIdActividadDesdeEnlace($notificacion['enlace']);
+		if (!$id_actividad) {
+			$this->respuestaJson(false, 'No se pudo identificar la actividad');
+		}
+
+		require_once 'Modelos/ModeloActividad.php';
+		$modeloAct = new ModeloActividad();
+		$actividad = $modeloAct->obtenerPorId($id_actividad);
+		if (!$actividad) {
+			$this->respuestaJson(false, 'Actividad no encontrada');
+		}
+
+		if ($respuesta === 'aceptar') {
+			$sql = "UPDATE participantes SET estado = 'aceptado' WHERE id_actividad = :id_act AND id_usuario = :id_user AND rol = 'organizador' AND estado = 'pendiente'";
+		} else {
+			$sql = "DELETE FROM participantes WHERE id_actividad = :id_act AND id_usuario = :id_user AND rol = 'organizador' AND estado = 'pendiente'";
+		}
+		$db = Database::getConexion();
+		$stmt = $db->prepare($sql);
+		$ok = $stmt->execute([':id_act' => $id_actividad, ':id_user' => $_SESSION['usuario_id']]);
+
+		if ($ok) {
+			$modeloNotif->marcarLeida($id_notificacion, $_SESSION['usuario_id']);
+			if ($respuesta === 'aceptar') {
+				// Notificar al creador
+				$nombreUsuario = $_SESSION['usuario_nombre'] ?? 'Un usuario';
+				$modeloNotif->crear(
+					$actividad['id_creador'],
+					'actividad',
+					'Organizador aceptado',
+					"$nombreUsuario ha aceptado ser organizador de la actividad.",
+					"?c=gestionActividad&a=index&id=$id_actividad"
+				);
+				$this->respuestaJson(true, 'Ahora eres organizador de la actividad');
+			} else {
+				$this->respuestaJson(true, 'Has rechazado ser organizador');
+			}
+		} else {
+			$this->respuestaJson(false, 'Error al procesar la solicitud');
+		}
+	}
+
+	/**
+	 * Extrae id_actividad de un enlace como "?c=gestionActividad&a=responderInvitacion&id_actividad=123"
+	 */
+	private function _extraerIdActividadDesdeEnlace($enlace) {
+		if (preg_match('/[?&]id_actividad=(\d+)/', $enlace, $matches)) {
+			return (int)$matches[1];
+		}
+		return null;
+	}
+
+	/**
+	 * Helper para responder JSON (igual al que usas en otros controladores)
+	 */
+	private function respuestaJson($success, $message, $data = null, $code = 200) {
+		if (ob_get_level()) ob_clean();
+		http_response_code($code);
+		header('Content-Type: application/json');
+		echo json_encode(['success' => $success, 'message' => $message, 'data' => $data]);
+		exit;
+	}
 }
 ?>

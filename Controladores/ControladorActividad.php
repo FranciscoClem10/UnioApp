@@ -746,5 +746,6 @@ class ControladorActividad {
 		echo json_encode(['success' => $result]);
 		exit;
 	}
+
 }
 ?>

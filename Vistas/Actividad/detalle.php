@@ -2,6 +2,8 @@
 // Asegurar que las variables estén definidas
 if (!isset($actividad)) die('Error: actividad no cargada');
 $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
+// Preparar dirección para JavaScript (si existe)
+$direccionBD = !empty($actividad['direccion']) ? json_encode($actividad['direccion']) : 'null';
 ?>
 
 <?php include 'includes/header.php'; ?>
@@ -17,7 +19,7 @@ $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
         <?php unset($_SESSION['exito_participacion']); ?>
     <?php endif; ?>
 
-    <!-- Hero Section (sin cambios) -->
+    <!-- Hero Section -->
     <section class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-16">
         <div class="lg:col-span-8">
             <div class="relative rounded-2xl overflow-hidden aspect-[16/9] shadow-2xl group">
@@ -120,13 +122,11 @@ $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
         </div>
     </section>
 
-    <!-- NUEVO SECTION: MAPA + CONTROLES + DIRECCIÓN -->
+    <!-- SECCIÓN MAPA + DIRECCIÓN (modificada) -->
     <section class="mb-20">
         <div class="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
-            <!-- Contenedor del mapa con capacidad de expansión -->
             <div id="map-container" class="relative transition-all duration-300">
                 <div id="map" class="h-64 w-full"></div>
-                <!-- Leyenda que se muestra solo si el usuario no tiene ubicación -->
                 <div id="map-overlay" class="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/30 transition-opacity duration-300" style="opacity:0;">
                     <div class="bg-white/90 backdrop-blur px-4 py-2 rounded-full text-sm font-semibold text-primary shadow-lg pointer-events-auto">📍 Toca el mapa para elegir tu punto de partida</div>
                 </div>
@@ -135,7 +135,9 @@ $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
                 <!-- Dirección de la actividad (destino) -->
                 <div>
                     <h3 class="text-sm font-bold text-outline uppercase tracking-widest mb-2">Ubicación de la actividad</h3>
-                    <p class="text-base font-bold text-on-surface" id="direccion-actividad">Obteniendo dirección...</p>
+                    <p class="text-base font-bold text-on-surface" id="direccion-actividad">
+                        <?= htmlspecialchars($actividad['direccion'] ?? 'Obteniendo dirección...') ?>
+                    </p>
                     <p class="text-xs text-outline mt-1" id="coordenadas-actividad" style="display:none;"><?= $actividad['lat'] . ',' . $actividad['lng'] ?></p>
                 </div>
                 <!-- Dirección del origen (punto de partida del usuario) -->
@@ -143,7 +145,6 @@ $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
                     <h3 class="text-sm font-bold text-outline uppercase tracking-widest mb-1">Tu punto de partida</h3>
                     <p class="text-sm text-on-surface" id="direccion-origen"></p>
                 </div>
-                <!-- Control único: mostrar/ocultar ruta en auto -->
                 <div class="flex items-center justify-between pt-2">
                     <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
                         <input type="checkbox" id="toggleCar" checked class="w-4 h-4 rounded border-primary text-primary focus:ring-primary">
@@ -155,7 +156,7 @@ $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
         </div>
     </section>
 
-    <!-- Descripción y CTA (resto igual) -->
+    <!-- Descripción y CTA -->
     <section class="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-20">
         <div class="lg:col-span-8">
             <h2 class="text-2xl font-extrabold text-on-surface mb-6 flex items-center gap-2">Sobre la actividad<div class="h-1 flex-grow bg-surface-container rounded-full ml-4"></div></h2>
@@ -225,7 +226,7 @@ $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
         </div>
     </section>
 
-    <!-- Reseñas (sin cambios) -->
+    <!-- Reseñas -->
     <section class="mt-16">
         <h2 class="text-2xl font-extrabold text-on-surface mb-8 flex items-center gap-2">Reseñas de la comunidad<div class="h-1 flex-grow bg-surface-container rounded-full ml-4"></div></h2>
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -300,7 +301,6 @@ $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
     </section>
 </main>
 
-<!-- CSS adicional para expansión y mensaje flotante -->
 <style>
     #map-container {
         transition: all 0.3s ease;
@@ -339,6 +339,8 @@ $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
     // Ubicación del usuario (origen por defecto, si existe)
     var userLat = <?= isset($userLat) && $userLat ? (float)$userLat : 'null' ?>;
     var userLng = <?= isset($userLng) && $userLng ? (float)$userLng : 'null' ?>;
+    // Dirección almacenada en BD (puede ser null)
+    var direccionBD = <?= $direccionBD ?>;
 
     var map, destinationMarker, originMarker = null;
     var carRoute = null;
@@ -357,7 +359,7 @@ $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
         function getDestinationIcon() {
             return L.divIcon({
                 className: 'custom-icon',
-                html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="#e91e63" stroke="#ffffff" stroke-width="3" style="width:30px; height:30px;"><path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z"/></svg>`,
+                html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="#7c3aed" stroke="#ffffff" stroke-width="3" style="width:30px; height:30px;"><path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z"/></svg>`,
                 iconSize: [30, 30],
                 iconAnchor: [15, 30]
             });
@@ -375,7 +377,7 @@ $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
         destinationMarker = L.marker([actividadLat, actividadLng], { icon: getDestinationIcon() }).addTo(map);
         destinationMarker.bindTooltip(actividadNombre).openTooltip();
 
-        // Expansión con doble clic (aumenta altura)
+        // Expansión con doble clic
         var mapContainer = document.getElementById('map-container');
         if (mapContainer) {
             map.on('dblclick', function() {
@@ -384,7 +386,7 @@ $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
             });
         }
 
-        // Geocodificación inversa con formato "calle y calle, ciudad, estado"
+        // Geocodificación inversa (para casos donde no hay dirección en BD)
         async function reverseGeocode(lat, lon) {
             const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`;
             try {
@@ -412,18 +414,29 @@ $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
             return { display: direccionFinal };
         }
 
-        // Mostrar dirección de la actividad
-        (async function showActivityAddress() {
+        // Función mejorada para mostrar dirección (prioriza BD)
+        async function showActivityAddress() {
             const direccionSpan = document.getElementById('direccion-actividad');
-            if (direccionSpan && actividadLat && actividadLng) {
+            if (!direccionSpan) return;
+
+            // Si ya tenemos una dirección en la base de datos, mostrarla inmediatamente
+            if (direccionBD && direccionBD !== 'null') {
+                direccionSpan.textContent = direccionBD;
+                return;
+            }
+
+            // Si no, obtenerla desde coordenadas mediante geocoding
+            if (actividadLat && actividadLng) {
                 try {
                     const addr = await getDetailedAddress(actividadLat, actividadLng);
                     direccionSpan.textContent = addr.display || "Dirección no encontrada";
                 } catch(e) {
                     direccionSpan.textContent = "Error al cargar dirección";
                 }
+            } else {
+                direccionSpan.textContent = "Ubicación no disponible";
             }
-        })();
+        }
 
         // Obtener ruta en auto (OSRM)
         async function fetchCarRoute(start, end) {
@@ -440,7 +453,7 @@ $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
             if (carRoute) map.removeLayer(carRoute);
             fetchCarRoute(startCoord, endCoord).then(coords => {
                 if (coords && coords.length) {
-                    carRoute = L.polyline(coords, { color: '#4caf50', weight: 6, opacity: 0.8 }).addTo(map);
+                    carRoute = L.polyline(coords, { color: '#7c3aed', weight: 6, opacity: 0.8 }).addTo(map);
                     if (!document.getElementById('toggleCar').checked) map.removeLayer(carRoute);
                 } else {
                     console.warn("No se pudo obtener ruta en auto");
@@ -465,14 +478,12 @@ $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
             originMarker = L.marker([lat, lng], { icon: getOriginIcon(), draggable: true }).addTo(map);
             originMarker.bindTooltip("Tu punto de partida (arrastra)").openTooltip();
 
-            // Evento de arrastre: actualizar ruta y dirección
             originMarker.on('dragend', async function(e) {
                 const newPos = e.target.getLatLng();
                 originPoint = { lat: newPos.lat, lng: newPos.lng };
                 if (document.getElementById('toggleCar').checked) {
                     drawCarRoute(originPoint, { lat: actividadLat, lng: actividadLng });
                 }
-                // Actualizar dirección
                 try {
                     const addr = await getDetailedAddress(newPos.lat, newPos.lng);
                     addressOrigin = addr.display;
@@ -483,7 +494,6 @@ $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
                 if (updateView && carRoute) map.fitBounds(carRoute.getBounds(), { padding: [40,40] });
             });
 
-            // Obtener dirección inicial
             try {
                 const addr = await getDetailedAddress(lat, lng);
                 addressOrigin = addr.display;
@@ -500,7 +510,7 @@ $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
             if (updateView && carRoute) map.fitBounds(carRoute.getBounds(), { padding: [40,40] });
         }
 
-        // CONTROL: checkbox de auto
+        // Controles
         const toggleCar = document.getElementById('toggleCar');
         if (toggleCar) {
             toggleCar.addEventListener('change', (e) => {
@@ -511,16 +521,13 @@ $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
             });
         }
 
-        // Botón reiniciar origen
         const resetBtn = document.getElementById('resetOriginBtn');
         if (resetBtn) {
             resetBtn.addEventListener('click', () => {
                 removeOrigin();
-                // Si el usuario tiene ubicación guardada, restaurarla
                 if (userLat && userLng && userLat !== 0 && userLng !== 0) {
                     setOrigin(userLat, userLng);
                 } else {
-                    // Mostrar overlay indicando que toque el mapa
                     const overlay = document.getElementById('map-overlay');
                     if (overlay) overlay.style.opacity = '1';
                     setTimeout(() => { if(overlay) overlay.style.opacity = '0'; }, 3000);
@@ -528,11 +535,10 @@ $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
             });
         }
 
-        // Inicializar origen: si usuario tiene ubicación, usarla; si no, esperar clic en mapa
+        // Inicializar origen
         if (userLat && userLng && userLat !== 0 && userLng !== 0) {
             setOrigin(userLat, userLng);
         } else {
-            // Mostrar leyenda y habilitar selección con clic
             const overlay = document.getElementById('map-overlay');
             if (overlay) overlay.style.opacity = '1';
             map.once('click', async (e) => {
@@ -541,6 +547,9 @@ $usuarioActualId = $_SESSION['usuario_id'] ?? 0;
                 await setOrigin(lat, lng);
             });
         }
+
+        // Mostrar dirección de la actividad usando el nuevo método
+        showActivityAddress();
     }
 </script>
 </body>

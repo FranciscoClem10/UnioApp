@@ -98,47 +98,38 @@ require_once __DIR__ . '/../../includes/header.php';
                     </h2>
                     <div class="space-y-3">
                         <?php foreach ($notisFiltradas as $n): ?>
-                            <div class="notification-card group relative bg-surface-container-lowest p-4 md:p-5 rounded-xl shadow-[0_4px_16px_rgba(45,47,47,0.04)] hover:shadow-[0_12px_32px_rgba(45,47,47,0.08)] transition-all duration-300 flex items-start gap-4 border border-transparent hover:border-outline-variant/10 <?= $n['leida'] ? 'opacity-80' : '' ?>">
-                                <!-- Icono -->
+                            <?php 
+                                $esInvitacionActividad = ($n['tipo'] == 'actividad' && $n['titulo'] == 'Invitación a actividad');
+                                $esInvitacionOrganizador = ($n['tipo'] == 'actividad' && $n['titulo'] == 'Invitación a organizador');
+                                $esClickeable = ($n['tipo'] != 'solicitud_amistad' && !empty($n['enlace']) && !$esInvitacionActividad && !$esInvitacionOrganizador);
+                            ?>
+                            <!-- Contenedor principal con GRID para evitar salto de línea -->
+                            <div class="notification-card group relative bg-surface-container-lowest p-4 md:p-5 rounded-xl shadow-[0_4px_16px_rgba(45,47,47,0.04)] hover:shadow-[0_12px_32px_rgba(45,47,47,0.08)] transition-all duration-300 grid grid-cols-[auto,1fr,auto] gap-3 border border-transparent hover:border-outline-variant/10 <?= $n['leida'] ? 'opacity-80' : '' ?>">
+                                
+                                <!-- Icono (columna 1) -->
                                 <div class="w-12 h-12 rounded-xl shrink-0 bg-primary-container/20 flex items-center justify-center text-primary">
                                     <span class="material-symbols-outlined text-2xl"><?= getNotifIcon($n['titulo'], $n['contenido']) ?></span>
                                 </div>
 
-                                <!-- Contenido -->
-                                <?php if ($n['tipo'] != 'solicitud_amistad' && !empty($n['enlace'])): ?>
-                                    <a href="<?= BASE_URL ?>?c=notificacion&a=click&id=<?= $n['id_notificacion'] ?>" class="flex-1 min-w-0">
+                                <!-- Contenido principal (columna 2) -->
+                                <?php if ($esClickeable): ?>
+                                    <a href="<?= BASE_URL ?>?c=notificacion&a=click&id=<?= $n['id_notificacion'] ?>" class="min-w-0">
                                 <?php else: ?>
-                                    <div class="flex-1 min-w-0">
+                                    <div class="min-w-0">
                                 <?php endif; ?>
-
                                     <div class="flex flex-wrap items-baseline justify-between gap-2">
-                                        <h3 class="text-on-surface font-bold text-base"><?= htmlspecialchars($n['titulo']) ?></h3>
+                                        <h3 class="text-on-surface font-bold text-base break-words"><?= htmlspecialchars($n['titulo']) ?></h3>
                                         <span class="text-[10px] text-outline font-medium whitespace-nowrap"><?= date('d M, H:i', strtotime($n['fecha_creacion'])) ?></span>
                                     </div>
-                                    <p class="text-on-surface-variant text-sm mt-1"><?= nl2br(htmlspecialchars($n['contenido'])) ?></p>
-
-                                <?php if ($n['tipo'] != 'solicitud_amistad' && !empty($n['enlace'])): ?>
+                                    <p class="text-on-surface-variant text-sm mt-1 break-words"><?= nl2br(htmlspecialchars($n['contenido'])) ?></p>
+                                <?php if ($esClickeable): ?>
                                     </a>
                                 <?php else: ?>
                                     </div>
                                 <?php endif; ?>
 
-                                <!-- Botones para solicitudes de amistad SOLO si la notificación NO está leída -->
-                                <?php if ($n['tipo'] == 'solicitud_amistad' && !$n['leida']): ?>
-                                    <div class="flex flex-col sm:flex-row gap-2 mt-2 shrink-0">
-                                        <a href="<?= BASE_URL ?>?c=notificacion&a=responderSolicitud&id_notif=<?= $n['id_notificacion'] ?>&respuesta=aceptar"
-                                           class="px-4 py-1.5 bg-primary text-white rounded-full text-sm font-medium hover:bg-primary-dark transition text-center">
-                                            Aceptar
-                                        </a>
-                                        <a href="<?= BASE_URL ?>?c=notificacion&a=responderSolicitud&id_notif=<?= $n['id_notificacion'] ?>&respuesta=rechazar"
-                                           class="px-4 py-1.5 bg-outline-variant text-on-surface rounded-full text-sm font-medium hover:bg-surface-container transition text-center">
-                                            Rechazar
-                                        </a>
-                                    </div>
-                                <?php endif; ?>
-
-                                <!-- Menú de tres puntos -->
-                                <div class="relative shrink-0">
+                                <!-- Menú de tres puntos (columna 3) -->
+                                <div class="relative justify-self-end">
                                     <button class="p-2 rounded-full hover:bg-surface-container transition-colors text-on-surface-variant" data-dropdown-trigger="true">
                                         <span class="material-symbols-outlined">more_vert</span>
                                     </button>
@@ -164,6 +155,48 @@ require_once __DIR__ . '/../../includes/header.php';
                                         </a>
                                     </div>
                                 </div>
+
+                                <!-- Botones para solicitudes de amistad (ocupan toda la fila inferior) -->
+                                <?php if ($n['tipo'] == 'solicitud_amistad' && !$n['leida']): ?>
+                                    <div class="col-span-3 flex flex-col sm:flex-row gap-2 mt-2 justify-end">
+                                        <a href="<?= BASE_URL ?>?c=notificacion&a=responderSolicitud&id_notif=<?= $n['id_notificacion'] ?>&respuesta=aceptar"
+                                           class="px-4 py-1.5 bg-primary text-white rounded-full text-sm font-medium hover:bg-primary-dark transition text-center">
+                                            Aceptar
+                                        </a>
+                                        <a href="<?= BASE_URL ?>?c=notificacion&a=responderSolicitud&id_notif=<?= $n['id_notificacion'] ?>&respuesta=rechazar"
+                                           class="px-4 py-1.5 bg-outline-variant text-on-surface rounded-full text-sm font-medium hover:bg-surface-container transition text-center">
+                                            Rechazar
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <!-- Botones para invitaciones a actividad -->
+                                <?php if ($n['tipo'] == 'actividad' && !$n['leida'] && $n['titulo'] == 'Invitación a actividad'): ?>
+                                    <div class="col-span-3 flex flex-col sm:flex-row gap-2 mt-2 justify-end">
+                                        <button onclick="responderActividad(<?= $n['id_notificacion'] ?>, 'aceptar')"
+                                                class="px-4 py-1.5 bg-primary text-white rounded-full text-sm font-medium hover:bg-primary-dark transition text-center">
+                                            Aceptar
+                                        </button>
+                                        <button onclick="responderActividad(<?= $n['id_notificacion'] ?>, 'rechazar')"
+                                                class="px-4 py-1.5 bg-outline-variant text-on-surface rounded-full text-sm font-medium hover:bg-surface-container transition text-center">
+                                            Rechazar
+                                        </button>
+                                    </div>
+                                <?php endif; ?>
+
+                                <!-- Botones para invitación a organizador -->
+                                <?php if ($n['tipo'] == 'actividad' && !$n['leida'] && $n['titulo'] == 'Invitación a organizador'): ?>
+                                    <div class="col-span-3 flex flex-col sm:flex-row gap-2 mt-2 justify-end">
+                                        <button onclick="responderOrganizador(<?= $n['id_notificacion'] ?>, 'aceptar')"
+                                                class="px-4 py-1.5 bg-primary text-white rounded-full text-sm font-medium hover:bg-primary-dark transition text-center">
+                                            Aceptar
+                                        </button>
+                                        <button onclick="responderOrganizador(<?= $n['id_notificacion'] ?>, 'rechazar')"
+                                                class="px-4 py-1.5 bg-outline-variant text-on-surface rounded-full text-sm font-medium hover:bg-surface-container transition text-center">
+                                            Rechazar
+                                        </button>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
                     </div>
@@ -173,6 +206,9 @@ require_once __DIR__ . '/../../includes/header.php';
     </main>
 
     <?php require_once __DIR__ . '/../../includes/bottom-nav.php'; ?>
+
+    <!-- Toast flotante para mensajes -->
+    <div id="toast" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-black/80 text-white px-4 py-2 rounded-full text-sm z-50 hidden transition-all"></div>
 
     <style>
         main {
@@ -197,11 +233,69 @@ require_once __DIR__ . '/../../includes/header.php';
     </style>
 
     <script>
+        // Definir BASE_URL (debe venir desde PHP)
+        const BASE_URL = '<?= BASE_URL ?>';
+
+        // Función para mostrar notificaciones toast
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            if (!toast) return;
+            toast.textContent = msg;
+            toast.classList.remove('hidden');
+            toast.style.backgroundColor = isError ? '#b41340' : '#2d2f2f';
+            setTimeout(() => toast.classList.add('hidden'), 3000);
+        }
+
+        // Cerrar menús desplegables al hacer scroll
         const mainScroll = document.querySelector('main');
         if (mainScroll) {
             mainScroll.addEventListener('scroll', () => {
                 document.querySelectorAll('[data-dropdown-menu]').forEach(menu => menu.classList.add('hidden'));
             });
+        }
+
+        // Respuesta a invitación de actividad
+        async function responderActividad(idNotif, respuesta) {
+            const formData = new FormData();
+            formData.append('id_notif', idNotif);
+            formData.append('respuesta', respuesta);
+            try {
+                const resp = await fetch(`${BASE_URL}?c=notificacion&a=responderInvitacionActividad`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const json = await resp.json();
+                if (json.success) {
+                    showToast(json.message);
+                    location.reload();
+                } else {
+                    showToast(json.message, true);
+                }
+            } catch (e) {
+                showToast('Error al procesar la solicitud', true);
+            }
+        }
+
+        // Respuesta a invitación de organizador
+        async function responderOrganizador(idNotif, respuesta) {
+            const formData = new FormData();
+            formData.append('id_notif', idNotif);
+            formData.append('respuesta', respuesta);
+            try {
+                const resp = await fetch(`${BASE_URL}?c=notificacion&a=responderInvitacionOrganizador`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const json = await resp.json();
+                if (json.success) {
+                    showToast(json.message);
+                    location.reload();
+                } else {
+                    showToast(json.message, true);
+                }
+            } catch (e) {
+                showToast('Error al procesar la solicitud', true);
+            }
         }
     </script>
 </body>

@@ -18,9 +18,6 @@ class ModeloNotificacion {
         $this->db = Database::getConexion();
     }
 
-    /**
-     * Devuelve los tipos de notificación que el usuario tiene habilitados.
-     */
     private function obtenerTiposPermitidos($id_usuario) {
         // Si el usuario es el de la sesión, usamos los ajustes de sesión
         if (isset($_SESSION['usuario_id']) && $_SESSION['usuario_id'] == $id_usuario) {
@@ -46,9 +43,6 @@ class ModeloNotificacion {
         return $permitidos;
     }
 
-    /**
-     * Crea una notificación (sin cambios, se inserta siempre para mantener historial).
-     */
     public function crear($id_usuario, $tipo, $titulo, $contenido, $enlace = null) {
         $sql = "INSERT INTO notificaciones (id_usuario, tipo, titulo, contenido, enlace) 
                 VALUES (:id_usuario, :tipo, :titulo, :contenido, :enlace)";
@@ -62,9 +56,6 @@ class ModeloNotificacion {
         ]);
     }
 
-    /**
-     * Obtiene todas las notificaciones, filtradas por los tipos permitidos.
-     */
 	public function obtenerTodas($id_usuario, $limite = 100) {
 		$tiposPermitidos = $this->obtenerTiposPermitidos($id_usuario);
 		if (empty($tiposPermitidos)) {
@@ -83,9 +74,6 @@ class ModeloNotificacion {
 		return $stmt->fetchAll(PDO::FETCH_ASSOC);
 	}
 
-    /**
-     * Obtiene solo las no leídas, filtradas por los tipos permitidos.
-     */
     public function obtenerNoLeidas($id_usuario) {
         $tiposPermitidos = $this->obtenerTiposPermitidos($id_usuario);
         if (empty($tiposPermitidos)) {
@@ -101,9 +89,6 @@ class ModeloNotificacion {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Cuenta las no leídas, filtradas por los tipos permitidos.
-     */
     public function contarNoLeidas($id_usuario) {
         $tiposPermitidos = $this->obtenerTiposPermitidos($id_usuario);
         if (empty($tiposPermitidos)) {
@@ -118,9 +103,6 @@ class ModeloNotificacion {
         return (int)$stmt->fetchColumn();
     }
 
-    /**
-     * Marca una notificación como leída (sin cambios).
-     */
     public function marcarLeida($id_notificacion, $id_usuario) {
         $sql = "UPDATE notificaciones SET leida = 1 
                 WHERE id_notificacion = :id_not AND id_usuario = :id_user";
@@ -128,18 +110,12 @@ class ModeloNotificacion {
         return $stmt->execute([':id_not' => $id_notificacion, ':id_user' => $id_usuario]);
     }
 
-    /**
-     * Marca todas las notificaciones del usuario como leídas (sin cambios).
-     */
     public function marcarTodasLeidas($id_usuario) {
         $sql = "UPDATE notificaciones SET leida = 1 WHERE id_usuario = :id_user";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([':id_user' => $id_usuario]);
     }
 
-    /**
-     * Marca como leídas las notificaciones de ciertos tipos (útil si decides mantenerlo).
-     */
     public function marcarLeidasPorTipos($id_usuario, $tipos) {
         if (empty($tipos)) return true;
         $placeholders = implode(',', array_fill(0, count($tipos), '?'));
@@ -149,9 +125,6 @@ class ModeloNotificacion {
         return $stmt->execute(array_merge([$id_usuario], $tipos));
     }
 
-    /**
-     * Marca como leídas por contexto (sin cambios).
-     */
     public function marcarLeidasPorContexto($id_usuario, $tipo, $referencia) {
         $sql = "UPDATE notificaciones SET leida = 1 
                 WHERE id_usuario = :id_user 
