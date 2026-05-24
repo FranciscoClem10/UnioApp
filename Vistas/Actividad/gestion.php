@@ -230,6 +230,39 @@ require_once __DIR__ . '/../../includes/header.php';
                                 </div>
                             </div>
                         </div>
+						
+						<!-- Invitar amigos como miembros -->
+						<div class="border-t border-outline-variant/30 pt-5">
+							<div class="flex justify-between items-center">
+								<h4 class="font-bold flex items-center gap-1"><span class="material-symbols-outlined text-primary">person_add</span>Invitar amigos</h4>
+								<span class="text-xs text-outline">Se unirán como miembros</span>
+							</div>
+							<div class="mt-4">
+								<button id="btnMostrarAmigosMiembros" class="text-sm text-primary flex items-center gap-1 hover:underline">
+									<span class="material-symbols-outlined text-sm">group_add</span> Invitar amigos a la actividad
+								</button>
+							</div>
+							<div id="amigosMiembrosPanel" class="hidden mt-3 p-4 bg-surface-container-high rounded-xl space-y-3">
+								<p class="text-xs font-bold">Selecciona un amigo para invitarlo como miembro:</p>
+								<div id="amigosMiembrosList" class="space-y-2 max-h-40 overflow-y-auto">
+									<?php foreach ($datos['amigos_disponibles'] as $am): ?>
+										<div class="flex justify-between items-center p-2 bg-white rounded-xl shadow-sm">
+											<div class="flex items-center gap-2">
+												<img class="h-8 w-8 rounded-full" src="<?= $am['foto_base64'] ?? '../Recursos/user.png' ?>">
+												<span class="text-sm font-medium"><?= htmlspecialchars($am['nombre_completo']) ?></span>
+											</div>
+											<button class="invitar-miembro bg-primary/20 text-primary px-3 py-1 rounded-lg text-xs font-bold hover:bg-primary hover:text-white transition flex items-center gap-1" data-id="<?= $am['id_usuario'] ?>">
+												<span class="material-symbols-outlined text-sm">send</span> Invitar
+											</button>
+										</div>
+									<?php endforeach; ?>
+									<?php if (empty($datos['amigos_disponibles'])): ?>
+										<p class="text-xs text-outline text-center py-2">No hay amigos disponibles para invitar</p>
+									<?php endif; ?>
+								</div>
+							</div>
+						</div>
+												
                         <button id="descargarLista" class="w-full py-3.5 border-2 border-dashed border-outline-variant/50 text-on-surface-variant font-bold rounded-xl hover:bg-surface-container-highest transition flex items-center justify-center gap-2">
                             <span class="material-symbols-outlined text-lg">file_download</span> Descargar Lista (PDF)
                         </button>
@@ -387,7 +420,28 @@ require_once __DIR__ . '/../../includes/header.php';
             } catch (e) { showToast('Error', true); }
             finally { hideLoader(); }
         }
-
+		
+		async function invitarAmigo(idAmigo) {
+            const formData = new FormData();
+            formData.append('id_actividad', actividadId);
+            formData.append('id_amigo', idAmigo);
+            try {
+                showLoader();
+                const resp = await fetch(`${BASE_URL}?c=gestionActividad&a=invitarAmigo`, { method: 'POST', body: formData });
+                const json = await resp.json();
+                if (json.success) {
+                    showToast(json.message);
+                    location.reload();
+                } else {
+                    showToast(json.message, true);
+                }
+            } catch (e) {
+                showToast('Error', true);
+            } finally {
+                hideLoader();
+            }
+        }
+		
         function bindEvents() {
             document.querySelectorAll('.aceptar-solicitud').forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -429,6 +483,15 @@ require_once __DIR__ . '/../../includes/header.php';
                 btn.addEventListener('click', () => {
                     agregarOrganizador(btn.dataset.id);
                 });
+            });
+			
+			document.querySelectorAll('.invitar-miembro').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    invitarAmigo(btn.dataset.id);
+                });
+            });
+            document.getElementById('btnMostrarAmigosMiembros').addEventListener('click', () => {
+                document.getElementById('amigosMiembrosPanel').classList.toggle('hidden');
             });
         }
 
@@ -559,6 +622,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 document.body.removeChild(element);
             });
         });
+		
         
         // Mapa Leaflet
         let map, marker;

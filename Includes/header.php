@@ -12,7 +12,7 @@ $modoOscuro = $_SESSION['modo_oscuro'] ?? ($_SESSION['ajustes']['modo_oscuro'] ?
 $controller = $_GET['c'] ?? '';
 $action = $_GET['a'] ?? '';
 
-// TÍTULO
+// TÍTULO (actualizado con todas las rutas relevantes)
 $titulo = 'Unio';
 
 if ($controller === 'dashboard') {
@@ -21,18 +21,51 @@ if ($controller === 'dashboard') {
     $titulo = 'Unio | Crear actividad';
 } elseif ($controller === 'actividad' && $action === 'editar') {
     $titulo = 'Unio | Editar Actividad';
+} elseif ($controller === 'actividad' && $action === 'detalle') {
+    $titulo = 'Unio | Detalle actividad';
+} elseif ($controller === 'actividad' && $action === 'gestion') {
+    $titulo = 'Unio | Mis actividades';
+} elseif ($controller === 'actividad' && $action === 'editor') {
+    $titulo = 'Unio | Editor actividad';
 } elseif ($controller === 'mensajes') {
-    $titulo = 'Unio | Mensajes';
+    if ($action === 'verActividad') {
+        $titulo = 'Unio | Mensajes de actividad';
+    } elseif ($action === 'verPrivado') {
+        $titulo = 'Unio | Mensaje privado';
+    } elseif ($action === 'chats') {
+        $titulo = 'Unio | Chats';
+    } else {
+        $titulo = 'Unio | Mensajes';
+    }
+} elseif ($controller === 'mensajesGrupo' && $action === 'verActividad') {
+    $titulo = 'Unio | Mensajes de actividad';
 } elseif ($controller === 'perfil' && $action === 'index') {
     $titulo = 'Unio | Mi perfil';
 } elseif ($controller === 'perfil' && $action === 'ajustes') {
     $titulo = 'Unio | Ajustes';
+} elseif ($controller === 'perfil' && $action === 'editor') {
+    $titulo = 'Unio | Editar perfil';
 } elseif ($controller === 'amigos') {
-    $titulo = 'Unio | Conexiones';
+    if ($action === 'listaAmigos') {
+        $titulo = 'Unio | Mis amigos';
+    } elseif ($action === 'nuevosAmigos') {
+        $titulo = 'Unio | Nuevos amigos';
+    } elseif ($action === 'perfilPrivado') {
+        $titulo = 'Unio | Perfil privado';
+    } elseif ($action === 'verPerfil') {
+        $titulo = 'Unio | Ver perfil';
+    } else {
+        $titulo = 'Unio | Conexiones';
+    }
 } elseif ($controller === 'notificacion') {
     $titulo = 'Unio | Notificaciones';
+} elseif ($controller === 'ajustes') {
+    $titulo = 'Unio | Ajustes';
+} elseif ($controller === 'organizador') {
+    $titulo = 'Unio | Organizador';
+} elseif ($controller === 'participacion') {
+    $titulo = 'Unio | Participación';
 }
-
 ?>
 
 <!DOCTYPE html>
@@ -42,6 +75,9 @@ if ($controller === 'dashboard') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     
     <title><?= htmlspecialchars($titulo) ?></title>
+    
+    <!-- Favicon (ícono de la aplicación) -->
+    <link rel="icon" type="image/png" href="<?= BASE_URL ?>Assets/imgs/icono.png">
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>

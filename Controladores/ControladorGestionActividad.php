@@ -439,28 +439,46 @@ class ControladorGestionActividad {
     }
 
     public function eliminarParticipante() {
-        $this->verificarSesion();
-        $id_actividad = (int)($_POST['id_actividad'] ?? 0);
-        $id_usuario = (int)($_POST['id_usuario'] ?? 0);
-        if (!$id_actividad || !$id_usuario) $this->respuestaJson(false, 'Datos incompletos');
+		$this->verificarSesion();
+		$id_actividad = (int)($_POST['id_actividad'] ?? 0);
+		$id_usuario = (int)($_POST['id_usuario'] ?? 0);
+		if (!$id_actividad || !$id_usuario) $this->respuestaJson(false, 'Datos incompletos');
 
-        try {
-            if (!$this->esCreador($id_actividad, $_SESSION['usuario_id'])) {
-                $this->respuestaJson(false, 'Solo el creador puede eliminar participantes');
-            }
-            $db = Database::getConexion();
-            $db->beginTransaction();
-            $stmt1 = $db->prepare("DELETE FROM participantes WHERE id_actividad = :id_act AND id_usuario = :id_user AND rol != 'creador'");
-            $stmt1->execute([':id_act' => $id_actividad, ':id_user' => $id_usuario]);
-            $stmt2 = $db->prepare("DELETE FROM asistencia WHERE id_instancia = :id_act AND id_usuario = :id_user");
-            $stmt2->execute([':id_act' => $id_actividad, ':id_user' => $id_usuario]);
-            $db->commit();
-            $this->respuestaJson(true, 'Participante eliminado');
-        } catch (Exception $e) {
-            if (isset($db)) $db->rollBack();
-            $this->respuestaJson(false, 'Error: ' . $e->getMessage(), null, 500);
-        }
-    }
+		try {
+			if (!$this->esCreador($id_actividad, $_SESSION['usuario_id'])) {
+				$this->respuestaJson(false, 'Solo el creador puede eliminar participantes');
+			}
+
+			// Obtener datos del participante a eliminar (para la notificación)
+			$participante = $this->modeloUsuario->obtenerPorId($id_usuario);
+			$nombreParticipante = $participante['nombre_completo'] ?? 'Usuario';
+			$actividad = $this->modeloActividad->obtenerPorId($id_actividad);
+			$nombreActividad = $actividad['nombre'];
+
+			// Eliminar de participantes y asistencia
+			$db = Database::getConexion();
+			$db->beginTransaction();
+			$stmt1 = $db->prepare("DELETE FROM participantes WHERE id_actividad = :id_act AND id_usuario = :id_user AND rol != 'creador'");
+			$stmt1->execute([':id_act' => $id_actividad, ':id_user' => $id_usuario]);
+			$stmt2 = $db->prepare("DELETE FROM asistencia WHERE id_instancia = :id_act AND id_usuario = :id_user");
+			$stmt2->execute([':id_act' => $id_actividad, ':id_user' => $id_usuario]);
+			$db->commit();
+
+			// Notificar al usuario eliminado
+			$this->modeloNotificacion->crear(
+				$id_usuario,
+				'actividad',
+				'Eliminado de actividad',
+				"Has sido eliminado de la actividad '{$nombreActividad}' por el creador.",
+				"?c=actividad&a=detalle&id=$id_actividad"
+			);
+
+			$this->respuestaJson(true, 'Participante eliminado');
+		} catch (Exception $e) {
+			if (isset($db)) $db->rollBack();
+			$this->respuestaJson(false, 'Error: ' . $e->getMessage(), null, 500);
+		}
+	}
 
     private function verificarSesion() {
         if (!isset($_SESSION['usuario_id'])) {
