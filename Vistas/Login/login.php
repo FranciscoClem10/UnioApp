@@ -3,10 +3,11 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Iniciar Sesión - UnioApp</title>
+<title>Unio | Inicio</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link rel="icon" type="image/png" href="<?= BASE_URL ?>Assets/imgs/icono.png">
 <script id="tailwind-config">
       tailwind.config = {
         darkMode: "class",
@@ -105,7 +106,7 @@
     </nav>
 
     <main class="pt-16 kinetic-prism-bg">
-      <section class="relative min-h-[921px] flex items-center px-8 lg:px-24 py-12 max-w-screen-2xl mx-auto">
+      <section class="relative min-h-[auto] flex items-center px-8 lg:px-24 py-12 max-w-screen-2xl mx-auto">
         <div class="grid lg:grid-cols-12 gap-16 items-center w-full">
           <!-- Hero Content -->
           <div class="lg:col-span-7 space-y-8">
@@ -122,25 +123,8 @@
               </span>
             </h1>
             <p class="text-xl text-on-surface-variant max-w-xl leading-relaxed font-body">
-              Descubre lo que está pasando a tu alrededor. Desde talleres clandestinos hasta festivales masivos, Unio te conecta con personas que comparten tus mismas pasiones.
+              Descubre lo que está pasando a tu alrededor. Desde talleres comunitarios hasta festivales masivos, Unio te conecta con personas que comparten tus mismas pasiones.
             </p>
-            <div class="flex flex-wrap gap-4 pt-4">
-              <div class="flex -space-x-3">
-                <img alt="User" class="w-10 h-10 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCsl7HBUgMS4GxHqck5GPfhDVyuhRvzZEVcLCfOrwC5kvHvvpEmYQhyr6g4sBhyT_unXlK1h-2rkG9FW0cZCWjgRZqr9yPy-W2jRKuUQMt_EgLtXCqX2oSfJq3niHJiWSFETrzx8d9KiTGrs7F5XzHkXlM4qST0MG1QfuT1kCuokeqJ6uBUsMndfJwAf756LHGWp0u44xa0rRYulcvYtPrhYB8urERr6yX2jhubqWC_gaIldSjVcxTlapdgFVYHavQrrywBid8k9Q"/>
-                <img alt="User" class="w-10 h-10 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHIHdHQInixvEvPaHWCjnR9PR227iCNepteXZjwo3YTxXGO9sVZoEKWS8-ci4jjU5TW4HOTJ9z1bIP36ry42RijDswwOHyOIaAHnZhfh6_1NUIfP0BZ9thm7BFWMo9M1BWx8lzOQK__6-piCifashD054cuGW5jPRAOXk2FTzIhIqTqyus6YUyeQYYcZNOfJgHYKV9ykZe7jyw6G85gZiMckEM6Bw2BSnamv0BzAfVAgrKDomfC2NhUiPjnB5ZdRJl10AS6JZltg"/>
-                <img alt="User" class="w-10 h-10 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDL80N68-UCkkUisS_S-TgDXLhx1bB2dszS3hFTkwmnC6SusOXq5y9yb1SadV-Xukw4zB9KrMTiIxaGHBW28PQtu0ChaeojUsQVC5ZjI6paii64j531-wZgV8bBVaTQ944ijD_bfP_O-JkgUs7qvc1IxSaxx-2naoxvVDw00FoduKu1McgFT1PWTDP9M_YU2GkQYyd7T7Lr4mJjNXqZNzxP46QoAFRN9c9NbgnO1hZSJW3xB7qUQr65MRKhKDH6A-nGxeIZGwpqfw"/>
-                <div class="w-10 h-10 rounded-full border-2 border-white bg-secondary-container flex items-center justify-center text-[10px] font-bold text-on-secondary-container">
-                  +2k
-                </div>
-              </div>
-              <p class="text-sm font-medium text-on-surface-variant self-center">
-                Únete a 
-                  <span class="text-on-surface font-bold">
-                    12,000+ personas
-                  </span> 
-                conectando hoy.
-              </p>
-            </div>
           </div>
           
           <!-- Tarjeta de formulario de login - FUNCIONALIDAD PHP MANTENIDA -->
@@ -148,11 +132,8 @@
             <div class="bg-surface-container-lowest p-8 md:p-10 rounded-[2rem] shadow-[0_32px_64px_-16px_rgba(45,47,47,0.08)] relative overflow-hidden">
               <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
               <div class="relative space-y-6">
-                <div class="flex justify-center mb-2">
-                  <img alt="Unio Logo" class="h-10 w-auto" src="Assets\imgs\logo.png"/>
-                </div>
                 <div class="space-y-2">
-                  <h3 class="text-2xl font-bold tracking-tight text-on-surface">Bienvenido de nuevo</h3>
+                  <h3 class="text-2xl font-bold tracking-tight text-center">Bienvenido de nuevo</h3>
                   <p class="text-sm text-on-surface-variant">Accede a tu cuenta para continuar explorando.</p>
                 </div>
                 

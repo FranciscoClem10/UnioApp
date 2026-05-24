@@ -25,8 +25,10 @@ if ($controller === 'dashboard') {
     $titulo = 'Unio | Detalle actividad';
 } elseif ($controller === 'actividad' && $action === 'gestion') {
     $titulo = 'Unio | Mis actividades';
-} elseif ($controller === 'actividad' && $action === 'editor') {
-    $titulo = 'Unio | Editor actividad';
+} elseif ($controller === 'actividad' && $action === 'edicion') {
+    $titulo = 'Unio | Editor de actividades';
+} elseif ($controller === 'gestionActividad' && $action === 'index') {
+    $titulo = 'Unio | Gestión de actividad';
 } elseif ($controller === 'mensajes') {
     if ($action === 'verActividad') {
         $titulo = 'Unio | Mensajes de actividad';
